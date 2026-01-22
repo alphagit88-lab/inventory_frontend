@@ -1,36 +1,116 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Inventory Management System - Frontend
+
+Multi-Tenant SaaS Inventory Management Web Application Frontend built with Next.js.
+
+## Features
+
+- **Authentication**: Session-based login and registration
+- **Role-Based Access Control**: 
+  - Super Admin: Manage tenants and system overview
+  - Store Admin: Manage branches, products, inventory, users
+  - Branch User: Stock management and POS (Point of Sale)
+- **Product Management**: Create products with variants (Brand + Size)
+- **Inventory Management**: Stock-in, view inventory, check stock levels
+- **Invoicing (POS)**: Create invoices, view invoice history
+- **Reporting**: Profit reports, daily sales, stock status
+- **User Management**: Create and manage branch users
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+ 
+- Backend API running on `http://localhost:5000`
+
+### Installation
+
+1. Install dependencies:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Create `.env.local` file:
+```env
+NEXT_PUBLIC_API_URL=http://localhost:5000/api
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Run the development server:
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Learn More
+## Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/                    # Next.js app router pages
+│   ├── dashboard/          # Dashboard pages for each role
+│   ├── login/              # Login page
+│   ├── register/           # Registration page
+│   ├── tenants/            # Tenant management (Super Admin)
+│   ├── branches/           # Branch management
+│   ├── products/           # Product management
+│   ├── inventory/          # Inventory management
+│   ├── invoices/            # Invoice management
+│   ├── users/              # User management
+│   ├── reports/            # Reporting pages
+│   └── system/             # System overview (Super Admin)
+├── components/             # Reusable components
+│   ├── Layout.tsx          # Main layout with navigation
+│   └── ProtectedRoute.tsx # Route protection component
+├── contexts/               # React contexts
+│   └── AuthContext.tsx     # Authentication context
+└── lib/                    # Utilities
+    └── api.ts              # API client
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## API Integration
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The frontend communicates with the backend API using session-based authentication. All API calls are handled through the `api` client in `src/lib/api.ts`.
 
-## Deploy on Vercel
+### Authentication Flow
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. User logs in via `/login`
+2. Session cookie is automatically set by the backend
+3. All subsequent requests include the session cookie
+4. User profile is stored in `AuthContext`
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+
+## Environment Variables
+
+- `NEXT_PUBLIC_API_URL` - Backend API base URL (default: `http://localhost:5000/api`)
+
+## Features by Role
+
+### Super Admin
+- View system overview
+- Manage tenants (create, view, delete)
+- Access all system statistics
+
+### Store Admin
+- Manage branches
+- Manage products and variants
+- View inventory across all branches
+- Create branch users
+- View invoices and reports
+
+### Branch User
+- Stock-in items
+- Create invoices (POS)
+- View local inventory
+- View local reports
+
+## Notes
+
+- Session cookies are automatically handled by the browser
+- All API requests include `credentials: 'include'` to send cookies
+- Protected routes automatically redirect to login if not authenticated
+- Role-based access control is enforced on both frontend and backend
