@@ -8,8 +8,16 @@ import { useAuth } from '@/contexts/AuthContext';
 
 export default function ReportsPage() {
   const { user } = useAuth();
-  const [profit, setProfit] = useState<any>(null);
-  const [dailySales, setDailySales] = useState<any>(null);
+  const [profit, setProfit] = useState<{
+    totalRevenue: number;
+    totalCost: number;
+    profit: number;
+    invoiceCount: number;
+  } | null>(null);
+  const [dailySales, setDailySales] = useState<{
+    totalRevenue: number;
+    totalInvoices: number;
+  } | null>(null);
   const [loading, setLoading] = useState(false);
   const [dateRange, setDateRange] = useState({
     startDate: new Date(new Date().setDate(new Date().getDate() - 30))
@@ -65,6 +73,12 @@ export default function ReportsPage() {
             <p className="mt-2 text-sm text-gray-600">View sales and profit reports</p>
           </div>
 
+          {loading && (
+            <div className="rounded-md bg-blue-50 p-4">
+              <p className="text-sm text-blue-800">Loading reports...</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="rounded-lg bg-white p-6 shadow">
               <h2 className="text-lg font-semibold mb-4 text-gray-900">Profit Report</h2>
@@ -91,7 +105,9 @@ export default function ReportsPage() {
                     />
                   </div>
                 </div>
-                {profit && (
+                {loading && !profit ? (
+                  <div className="text-center py-8 text-gray-500">Loading profit data...</div>
+                ) : profit ? (
                   <div className="space-y-2 pt-4 border-t">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Total Revenue:</span>
@@ -109,7 +125,7 @@ export default function ReportsPage() {
                       {profit.invoiceCount} invoices
                     </div>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
 
@@ -127,7 +143,9 @@ export default function ReportsPage() {
                     className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-blue-500"
                   />
                 </div>
-                {dailySales && (
+                {loading && !dailySales ? (
+                  <div className="text-center py-8 text-gray-500">Loading daily sales...</div>
+                ) : dailySales ? (
                   <div className="space-y-2 pt-4 border-t">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Total Revenue:</span>
@@ -140,7 +158,7 @@ export default function ReportsPage() {
                       <span className="font-semibold">{dailySales.totalInvoices}</span>
                     </div>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           </div>

@@ -21,8 +21,12 @@ export default function TenantsPage() {
     try {
       const data = await api.getTenants();
       setTenants(data);
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred.');
+      }
     } finally {
       setLoading(false);
     }
@@ -36,8 +40,12 @@ export default function TenantsPage() {
       setShowModal(false);
       setFormData({ name: '', subscription_status: 'trial' });
       fetchTenants();
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred.');
+      }
     }
   };
 
@@ -46,8 +54,12 @@ export default function TenantsPage() {
     try {
       await api.deleteTenant(id);
       fetchTenants();
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred.');
+      }
     }
   };
 

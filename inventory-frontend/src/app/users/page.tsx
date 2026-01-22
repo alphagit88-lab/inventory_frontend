@@ -26,8 +26,12 @@ export default function UsersPage() {
       // Filter out the current logged-in user as an extra safety measure
       const filteredUsers = data.filter((u) => u.id !== user?.id && u.role === 'branch_user');
       setUsers(filteredUsers);
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred.');
+      }
     } finally {
       setLoading(false);
     }
@@ -37,8 +41,10 @@ export default function UsersPage() {
     try {
       const data = await api.getBranches();
       setBranches(data);
-    } catch (error: any) {
-      // Ignore errors
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      }
     }
   };
 
@@ -50,8 +56,12 @@ export default function UsersPage() {
       setShowModal(false);
       setFormData({ email: '', password: '', branchId: '' });
       fetchUsers();
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred.');
+      }
     }
   };
 
@@ -60,8 +70,12 @@ export default function UsersPage() {
     try {
       await api.deleteUser(id);
       fetchUsers();
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred.');
+      }
     }
   };
 

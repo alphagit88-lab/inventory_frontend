@@ -80,10 +80,10 @@ export default function RegisterPage() {
             console.warn('Invalid branches data received:', data);
             setBranches([]);
           }
-        } catch (error: any) {
+        } catch (error) {
           console.error('Error fetching branches list:', error);
           console.error('Error details:', {
-            message: error?.message,
+            message: (error as Error)?.message,
             tenantId: formData.tenantId,
             error: error
           });

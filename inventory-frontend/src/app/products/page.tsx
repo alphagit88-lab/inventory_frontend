@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Layout } from '@/components/Layout';
-import { api, Product, ProductVariant } from '@/lib/api';
-import Link from 'next/link';
+import { api, Product } from '@/lib/api';
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -24,8 +23,12 @@ export default function ProductsPage() {
     try {
       const data = await api.getProducts();
       setProducts(data);
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred.');
+      }
     } finally {
       setLoading(false);
     }
@@ -39,8 +42,12 @@ export default function ProductsPage() {
       setShowModal(false);
       setFormData({ name: '', category: '' });
       fetchProducts();
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred.');
+      }
     }
   };
 
@@ -54,8 +61,12 @@ export default function ProductsPage() {
       setVariantData({ brand: '', size: '' });
       setSelectedProduct(null);
       fetchProducts();
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred.');
+      }
     }
   };
 
@@ -64,8 +75,12 @@ export default function ProductsPage() {
     try {
       await api.deleteProduct(id);
       fetchProducts();
-    } catch (error: any) {
-      setError(error.message);
+      } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred.');
+      }
     }
   };
 

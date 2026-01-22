@@ -54,9 +54,14 @@ export default function InvoicesPage() {
       
       setInvoices(data);
       setError('');
-    } catch (error: any) {
-      console.error('Error fetching invoices:', error);
-      setError(error.message || 'Failed to load invoices');
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error('Error fetching invoices:', error);
+        setError(error.message || 'Failed to load invoices');
+      } else {
+        console.error('Error fetching invoices:', error);
+        setError('Failed to load invoices');
+      }
       setInvoices([]);
     } finally {
       setLoading(false);

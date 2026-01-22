@@ -12,12 +12,18 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch by only rendering after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
-    if (params.id) {
+    if (params.id && mounted) {
       fetchInvoice(params.id as string);
     }
-  }, [params.id]);
+  }, [params.id, mounted]);
 
   const fetchInvoice = async (id: string) => {
     if (!id || id.trim() === '') {
@@ -30,16 +36,22 @@ export default function InvoiceDetailPage() {
       const data = await api.getInvoice(id);
       setInvoice(data);
       setError('');
-    } catch (error: any) {
-      console.error('Error fetching invoice:', error);
-      setError(error.message || 'Failed to load invoice');
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error('Error fetching invoice:', error);
+        setError(error.message || 'Failed to load invoice');
+      } else {
+        console.error('Error fetching invoice:', error);
+        setError('Failed to load invoice');
+      }
       setInvoice(null);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading) {
+  // Don't render until mounted to prevent hydration mismatch
+  if (!mounted || loading) {
     return (
       <ProtectedRoute>
         <Layout>
@@ -66,9 +78,9 @@ export default function InvoiceDetailPage() {
       <Layout>
         <div className="space-y-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Invoice {invoice.invoice_number}</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Invoice {invoice.invoice_number || 'N/A'}</h1>
             <p className="mt-2 text-sm text-gray-600">
-              Created: {formatDate(invoice.created_at, true)}
+              Created: {invoice.created_at ? formatDate(invoice.created_at, true) : 'N/A'}
             </p>
           </div>
 

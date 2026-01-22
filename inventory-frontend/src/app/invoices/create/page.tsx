@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Layout } from '@/components/Layout';
-import { api, ProductVariant, Invoice } from '@/lib/api';
+import { api, ProductVariant } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 
@@ -40,8 +40,12 @@ export default function CreateInvoicePage() {
     try {
       const data = await api.searchProducts(searchTerm);
       setVariants(data);
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred.');
+      }
     }
   };
 
@@ -88,8 +92,12 @@ export default function CreateInvoicePage() {
       setSearchTerm('');
       setVariants([]);
       setError('');
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred.');
+      }
     }
   };
 
@@ -146,8 +154,12 @@ export default function CreateInvoicePage() {
         branchId: branchIdToUse,
       });
       router.push(`/invoices/${invoice.id}`);
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred');
+      }
     } finally {
       setLoading(false);
     }

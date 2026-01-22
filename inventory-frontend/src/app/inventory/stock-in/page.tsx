@@ -28,6 +28,7 @@ export default function StockInPage() {
     } else {
       setVariants([]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchTerm]);
 
   useEffect(() => {
@@ -49,8 +50,12 @@ export default function StockInPage() {
     try {
       const data = await api.searchProducts(searchTerm);
       setVariants(data);
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unexpected error occurred.');
+      }
     }
   };
 
@@ -117,9 +122,9 @@ export default function StockInPage() {
       });
       setSearchTerm('');
       setVariants([]);
-    } catch (error: any) {
+    } catch (error) {
       console.error('Stock in error:', error);
-      setError(error.message || 'Failed to add stock. Please try again.');
+      setError(error instanceof Error ? error.message : 'Failed to add stock. Please try again.');
     } finally {
       setLoading(false);
     }

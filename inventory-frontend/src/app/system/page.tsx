@@ -1,20 +1,77 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Layout } from '@/components/Layout';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/date';
 
+type TenantItem = {
+  id: string;
+  name: string;
+  subscriptionStatus: string;
+  createdAt: string | Date;
+  branchCount: number;
+};
+
+type BranchItem = {
+  id: string;
+  name: string;
+  address?: string;
+  phone?: string;
+  tenantName: string;
+};
+
+type UserItem = {
+  id: string;
+  email: string;
+  role: string;
+  tenantName: string | null;
+  branchName: string | null;
+};
+
+type InventoryItem = {
+  id: string;
+  productName: string;
+  brand: string;
+  size: string;
+  quantity: number;
+  branchName: string;
+  tenantName: string;
+};
+
+type RevenueItem = {
+  tenantName: string;
+  totalRevenue: number;
+  invoiceCount: number;
+};
+
 export default function SystemPage() {
-  const router = useRouter();
   const tenantsSectionRef = useRef<HTMLDivElement>(null);
   const branchesSectionRef = useRef<HTMLDivElement>(null);
   const usersSectionRef = useRef<HTMLDivElement>(null);
   const inventorySectionRef = useRef<HTMLDivElement>(null);
   const revenueSectionRef = useRef<HTMLDivElement>(null);
-  const [overview, setOverview] = useState<any>(null);
+
+  type Overview = {
+    summary: {
+      totalTenants: number;
+      totalBranches: number;
+      totalUsers: number;
+      totalInventoryItems: number;
+      totalRevenueLast30Days: number;
+    };
+    tenants: TenantItem[];
+    branches: BranchItem[];
+    users: UserItem[];
+    inventoryItems: InventoryItem[];
+    revenue: {
+      total: number;
+      byTenant: RevenueItem[];
+    };
+  };
+
+  const [overview, setOverview] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -26,8 +83,12 @@ export default function SystemPage() {
     try {
       const data = await api.getSystemOverview();
       setOverview(data);
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unexpected error occurred.');
+      }
     } finally {
       setLoading(false);
     }
@@ -38,19 +99,19 @@ export default function SystemPage() {
     
     switch (type) {
       case 'tenants':
-        ref = tenantsSectionRef;
+        ref = tenantsSectionRef as React.RefObject<HTMLDivElement>;
         break;
       case 'branches':
-        ref = branchesSectionRef;
+        ref = branchesSectionRef as React.RefObject<HTMLDivElement>;
         break;
       case 'users':
-        ref = usersSectionRef;
+        ref = usersSectionRef as React.RefObject<HTMLDivElement>;
         break;
       case 'inventory':
-        ref = inventorySectionRef;
+        ref = inventorySectionRef as React.RefObject<HTMLDivElement>;
         break;
       case 'revenue':
-        ref = revenueSectionRef;
+        ref = revenueSectionRef as React.RefObject<HTMLDivElement>;
         break;
     }
 
@@ -154,7 +215,7 @@ export default function SystemPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {overview.tenants.map((tenant: any) => (
+                      {overview.tenants.map((tenant) => (
                         <tr key={tenant.id}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {tenant.name}
@@ -208,7 +269,7 @@ export default function SystemPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {overview.branches.map((branch: any) => (
+                      {overview.branches.map((branch) => (
                         <tr key={branch.id}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {branch.name}
@@ -252,7 +313,7 @@ export default function SystemPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {overview.users.map((user: any) => (
+                      {overview.users.map((user) => (
                         <tr key={user.id}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {user.email}
@@ -302,7 +363,7 @@ export default function SystemPage() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {overview.inventoryItems.map((item: any) => (
+                      {overview.inventoryItems.map((item) => (
                         <tr key={item.id}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {item.productName}
@@ -350,7 +411,7 @@ export default function SystemPage() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {overview.revenue.byTenant.map((revenue: any, index: number) => (
+                        {overview.revenue.byTenant.map((revenue, index) => (
                           <tr key={index}>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                               {revenue.tenantName}
@@ -381,4 +442,3 @@ export default function SystemPage() {
     </ProtectedRoute>
   );
 }
-
