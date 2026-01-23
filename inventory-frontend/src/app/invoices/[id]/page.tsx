@@ -88,16 +88,16 @@ export default function InvoiceDetailPage() {
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
                 <div className="text-sm text-gray-500">Branch</div>
-                <div className="text-lg font-semibold">{invoice.branch?.name || 'N/A'}</div>
+                <div className="text-lg font-semibold text-gray-900">{invoice.branch?.name || 'N/A'}</div>
               </div>
               <div>
                 <div className="text-sm text-gray-500">Invoice Number</div>
-                <div className="text-lg font-semibold">{invoice.invoice_number}</div>
+                <div className="text-lg font-semibold text-gray-900">{invoice.invoice_number}</div>
               </div>
             </div>
 
             <div className="border-t pt-4">
-              <h3 className="text-lg font-semibold mb-4">Items</h3>
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Items</h3>
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -118,13 +118,13 @@ export default function InvoiceDetailPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {invoice.items?.map((item) => (
                     <tr key={item.id}>
-                      <td className="px-4 py-3 text-sm">
+                      <td className="px-4 py-3 text-sm text-gray-900">
                         {item.product_variant?.product?.name} - {item.product_variant?.brand} -{' '}
                         {item.product_variant?.size}
                       </td>
-                      <td className="px-4 py-3 text-sm">{item.quantity}</td>
-                      <td className="px-4 py-3 text-sm">${Number(item.unit_price).toFixed(2)}</td>
-                      <td className="px-4 py-3 text-sm text-right">
+                      <td className="px-4 py-3 text-sm text-gray-900">{item.quantity}</td>
+                      <td className="px-4 py-3 text-sm text-gray-900">${Number(item.unit_price).toFixed(2)}</td>
+                      <td className="px-4 py-3 text-sm text-right text-gray-900">
                         ${Number(item.subtotal).toFixed(2)}
                       </td>
                     </tr>
@@ -138,7 +138,7 @@ export default function InvoiceDetailPage() {
                 <div className="w-64 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Subtotal:</span>
-                    <span>
+                    <span className="text-gray-900">
                       $
                       {(
                         Number(invoice.total_amount) - Number(invoice.tax_amount)
@@ -147,15 +147,15 @@ export default function InvoiceDetailPage() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Tax:</span>
-                    <span>${Number(invoice.tax_amount).toFixed(2)}</span>
+                    <span className="text-gray-900">${Number(invoice.tax_amount).toFixed(2)}</span>
                   </div>
                   {invoice.change_amount && (
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600">Change:</span>
-                      <span>${Number(invoice.change_amount).toFixed(2)}</span>
+                      <span className="text-gray-900">${Number(invoice.change_amount).toFixed(2)}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-lg font-bold border-t pt-2">
+                  <div className="flex justify-between text-lg font-bold border-t pt-2 text-gray-900">
                     <span>Total:</span>
                     <span>${Number(invoice.total_amount).toFixed(2)}</span>
                   </div>
