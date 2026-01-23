@@ -25,7 +25,7 @@ export default function StockStatusPage() {
             // Call the getStockStatus API with filters
             // Note: We might need to ensure the API method supports passing these parameters
             const data = await api.getStockStatus({
-                branchId: user?.role === 'branch_user' ? user.branchId : undefined, // specific branch for users, all for store admin
+                branchId: user?.role === 'branch_user' ? (user.branchId ?? undefined) : undefined, // specific branch for users, all for store admin
                 size: filters.size || undefined,
                 brand: filters.brand || undefined,
                 category: filters.category || undefined,
