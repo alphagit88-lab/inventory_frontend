@@ -18,6 +18,7 @@ export default function ReportsPage() {
     totalRevenue: number;
     totalInvoices: number;
   } | null>(null);
+  const [stockReport, setStockReport] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [dateRange, setDateRange] = useState({
     startDate: new Date(new Date().setDate(new Date().getDate() - 30))
@@ -57,10 +58,24 @@ export default function ReportsPage() {
     }
   };
 
+  const fetchStockReport = async () => {
+    if (!user?.branchId) return;
+    setLoading(true);
+    try {
+      const data = await api.getLocalStockReport(user.branchId);
+      setStockReport(data);
+    } catch (error) {
+      console.error('Failed to fetch stock report:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (user?.branchId) {
       fetchProfit();
       fetchDailySales();
+      fetchStockReport();
     }
   }, [user, dateRange.startDate, dateRange.endDate, dateRange.selectedDate]);
 
@@ -160,6 +175,49 @@ export default function ReportsPage() {
                   </div>
                 ) : null}
               </div>
+            </div>
+
+            {/* New Inventory Summary Card */}
+            <div className="rounded-lg bg-white p-6 shadow">
+              <h2 className="text-lg font-semibold mb-4 text-gray-900">Inventory Summary</h2>
+              {loading && !stockReport ? (
+                <div className="text-center py-8 text-gray-500">Loading inventory data...</div>
+              ) : stockReport ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-blue-50 p-3 rounded-lg text-center">
+                      <div className="text-xs text-blue-600 font-medium uppercase">Total Items</div>
+                      <div className="text-2xl font-bold text-blue-800">{stockReport.totalItems}</div>
+                    </div>
+                    <div className="bg-green-50 p-3 rounded-lg text-center">
+                      <div className="text-xs text-green-600 font-medium uppercase">Total Value</div>
+                      {/* Ensure totalValue is treated as number before toFixed */}
+                      <div className="text-xl font-bold text-green-800">${Number(stockReport.totalValue ?? 0).toFixed(2)}</div>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-gray-700 font-medium">Low Stock Items</span>
+                      <span className="bg-red-100 text-red-800 text-xs font-semibold px-2 py-1 rounded-full">
+                        {stockReport.lowStockItems?.length || 0}
+                      </span>
+                    </div>
+                    {stockReport.lowStockItems && stockReport.lowStockItems.length > 0 ? (
+                      <div className="max-h-40 overflow-y-auto text-sm space-y-2">
+                        {stockReport.lowStockItems.map((item: any, idx: number) => (
+                          <div key={idx} className="flex justify-between text-gray-600 bg-gray-50 p-2 rounded">
+                            <span>{item.product_variant?.product?.name} ({item.product_variant?.size})</span>
+                            <span className="font-bold text-red-600">{item.quantity} left</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">No items strictly low on stock.</p>
+                    )}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
