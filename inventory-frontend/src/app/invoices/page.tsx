@@ -39,7 +39,7 @@ export default function InvoicesPage() {
       // Store Admins: fetch by tenant
       else if (user.role === 'store_admin') {
         if (!user.tenantId) {
-          setError('Your account is not assigned to a tenant. Please contact your administrator.');
+          setError('Your account is not assigned to a shop. Please contact your administrator.');
           setLoading(false);
           return;
         }
