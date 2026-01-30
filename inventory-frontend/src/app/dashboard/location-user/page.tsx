@@ -18,7 +18,7 @@ export default function BranchUserDashboard() {
 
   useEffect(() => {
     const fetchStats = async () => {
-      if (!user?.branchId) {
+      if (!user?.locationId) {
         setLoading(false);
         return;
       }
@@ -27,7 +27,7 @@ export default function BranchUserDashboard() {
         const [inventory, invoices, dailySales] = await Promise.all([
           api.getInventoryByLocation(user.locationId).catch(() => []),
           api.getInvoicesByLocation(user.locationId).catch(() => []),
-          api.getDailySales(user.branchId).catch(() => ({ totalRevenue: 0 })),
+          api.getDailySales(user.locationId).catch(() => ({ totalRevenue: 0 })),
         ]);
         setStats({
           inventoryItems: inventory.length,
