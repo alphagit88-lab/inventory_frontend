@@ -8,10 +8,12 @@ export interface User {
   id?: string;
   userId?: string;
   email: string;
-  role: 'super_admin' | 'store_admin' | 'branch_user';
+  role: 'super_admin' | 'store_admin' | 'location_user';
   tenantId?: string | null;
-  branchId?: string | null;
-  branch?: Branch | null;
+  locationId?: string | null;
+  tenant?: { id: string; name: string } | null;
+  location?: { id: string; name: string } | null;
+  isActive?: boolean;
 }
 
 export interface Tenant {
@@ -21,7 +23,7 @@ export interface Tenant {
   created_at: string;
 }
 
-export interface Branch {
+export interface Location {
   id: string;
   name: string;
   address?: string;
@@ -32,14 +34,15 @@ export interface Branch {
 export interface Product {
   id: string;
   name: string;
+  product_code?: string;
   category?: string;
+  discount?: number;
   variants?: ProductVariant[];
 }
 
 export interface ProductVariant {
   id: string;
-  brand: string;
-  size: string;
+  variant_name: string;
   product?: Product;
 }
 
@@ -48,18 +51,19 @@ export interface Inventory {
   quantity: number;
   cost_price: number;
   selling_price: number;
-  branch?: Branch;
+  location?: Location;
   product_variant?: ProductVariant;
 }
 
 export interface Invoice {
   id: string;
   invoice_number: string;
+  customer_name?: string;
   total_amount: number;
   tax_amount: number;
   change_amount?: number | null;
   created_at: string;
-  branch?: Branch;
+  location?: Location;
   items?: InvoiceItem[];
 }
 
@@ -69,7 +73,29 @@ export interface InvoiceItem {
   unit_price: number;
   cost_price: number;
   subtotal: number;
+  discount?: number;
+  original_price?: number;
   product_variant?: ProductVariant;
+}
+
+export interface StockReport {
+  id: string;
+  quantity: number;
+  cost_price: number;
+  selling_price: number;
+  product_variant?: ProductVariant;
+  location?: Location;
+}
+
+export interface StockMovement {
+  id: string;
+  type: 'in' | 'out';
+  quantity: number;
+  cost_price?: number;
+  selling_price?: number;
+  created_at: string;
+  product_variant?: ProductVariant;
+  location?: Location;
 }
 
 class ApiClient {
@@ -95,24 +121,26 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config);
-      
+
       // Check if response is JSON before parsing
       const contentType = response.headers.get('content-type');
-      let data: any;
-      
+
       if (contentType && contentType.includes('application/json')) {
-        data = await response.json();
+        const data = await response.json();
+
+        if (!response.ok) {
+          const errorMessage = (data && typeof data === 'object' && 'message' in data && typeof data.message === 'string')
+            ? data.message
+            : `Server error: ${response.status} ${response.statusText}`;
+          throw new Error(errorMessage);
+        }
+
+        return data as T;
       } else {
         // If not JSON, read as text for better error messages
         const text = await response.text();
         throw new Error(`Server returned non-JSON response: ${text.substring(0, 100)}`);
       }
-
-      if (!response.ok) {
-        throw new Error(data.message || `Server error: ${response.status} ${response.statusText}`);
-      }
-
-      return data;
     } catch (error) {
       if (error instanceof Error) {
         // Improve error messages for connection issues
@@ -131,7 +159,7 @@ class ApiClient {
     password: string;
     role: string;
     tenantId?: string;
-    branchId?: string;
+    locationId?: string;
   }) {
     return this.request<{ user: User }>('/auth/register', {
       method: 'POST',
@@ -139,10 +167,21 @@ class ApiClient {
     });
   }
 
-  async login(email: string, password: string) {
+  async registerSuperAdmin(data: {
+    email: string;
+    password: string;
+    role: 'super_admin';
+  }) {
+    return this.request<{ user: User }>('/auth/register-super-admin', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async login(email: string, password: string, tenantId?: string, locationId?: string) {
     return this.request<{ message: string; user: User }>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, tenantId, locationId }),
     });
   }
 
@@ -156,13 +195,20 @@ class ApiClient {
     return this.request<{ user: User }>('/auth/profile');
   }
 
+  async switchContext(tenantId: string | null, locationId: string | null) {
+    return this.request<{ message: string; context: { tenantId: string | null; locationId: string | null } }>('/auth/switch-context', {
+      method: 'POST',
+      body: JSON.stringify({ tenantId, locationId }),
+    });
+  }
+
   // Public endpoints (for registration - no authentication required)
   async getPublicTenants() {
     return this.request<Tenant[]>('/public/tenants');
   }
 
-  async getPublicBranches(tenantId: string) {
-    return this.request<Branch[]>(`/public/branches/${tenantId}`);
+  async getPublicLocations(tenantId: string) {
+    return this.request<Location[]>(`/public/locations/${tenantId}`);
   }
 
   // Tenant endpoints
@@ -194,33 +240,37 @@ class ApiClient {
     });
   }
 
-  // Branch endpoints
-  async getBranches() {
-    return this.request<Branch[]>('/branches');
+  // Location endpoints
+  async getLocations() {
+    return this.request<Location[]>('/locations');
   }
 
-  async getBranch(id: string) {
-    return this.request<Branch>(`/branches/${id}`);
+  async getLocation(id: string) {
+    return this.request<Location>(`/locations/${id}`);
   }
 
-  async createBranch(data: { name: string; address?: string; phone?: string }) {
-    return this.request<Branch>('/branches', {
+  async createLocation(data: { name: string; address?: string; phone?: string; tenantId?: string }) {
+    return this.request<Location>('/locations', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async updateBranch(id: string, data: Partial<Branch>) {
-    return this.request<Branch>(`/branches/${id}`, {
+  async updateLocation(id: string, data: Partial<Location>) {
+    return this.request<Location>(`/locations/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
   }
 
-  async deleteBranch(id: string) {
-    return this.request<{ message: string }>(`/branches/${id}`, {
+  async deleteLocation(id: string) {
+    return this.request<{ message: string }>(`/locations/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  async getLocationsByTenant(tenantId: string) {
+    return this.request<Location[]>(`/locations/by-tenant/${tenantId}`);
   }
 
   // Product endpoints
@@ -236,7 +286,7 @@ class ApiClient {
     return this.request<ProductVariant[]>(`/products/search?search=${encodeURIComponent(search)}`);
   }
 
-  async createProduct(data: { name: string; category?: string }) {
+  async createProduct(data: { name: string; category?: string; discount?: number; product_code?: string; tenantId?: string }) {
     return this.request<Product>('/products', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -261,11 +311,15 @@ class ApiClient {
     return this.request<ProductVariant[]>(`/products/${productId}/variants`);
   }
 
-  async createVariant(productId: string, data: { brand: string; size: string }) {
+  async createVariant(productId: string, data: { variant_name: string }) {
     return this.request<ProductVariant>(`/products/${productId}/variants`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  async searchProductsByCode(code: string) {
+    return this.request<ProductVariant[]>(`/products/search/code?code=${encodeURIComponent(code)}`);
   }
 
   // Inventory endpoints
@@ -275,7 +329,7 @@ class ApiClient {
     costPrice: number;
     sellingPrice: number;
     supplier?: string;
-    branchId?: string;
+    locationId?: string;
   }) {
     return this.request<Inventory>('/inventory/stock-in', {
       method: 'POST',
@@ -285,59 +339,61 @@ class ApiClient {
         costPrice: data.costPrice,
         sellingPrice: data.sellingPrice,
         supplier: data.supplier,
-        branchId: data.branchId,
+        locationId: data.locationId,
       }),
     });
   }
 
-  async getInventoryByBranch(branchId: string) {
-    return this.request<Inventory[]>(`/inventory/branch/${branchId}`);
+  async getInventoryByLocation(locationId: string) {
+    return this.request<Inventory[]>(`/inventory/location/${locationId}`);
   }
 
   async getInventoryByTenant() {
     return this.request<Inventory[]>('/inventory/tenant');
   }
 
-  async checkStock(branchId: string, productVariantId: string) {
+  async checkStock(locationId: string, productVariantId: string) {
     return this.request<{
       available: boolean;
       quantity: number;
       costPrice: number;
       sellingPrice: number;
-    }>(`/inventory/check-stock?branchId=${branchId}&productVariantId=${productVariantId}`);
+      discount?: number;
+      discountedPrice?: number;
+    }>(`/inventory/check-stock?locationId=${locationId}&productVariantId=${productVariantId}`);
   }
 
   async getStockMovements(params: {
-    branchId: string;
+    locationId: string;
     productVariantId?: string;
     startDate?: string;
     endDate?: string;
   }) {
     const queryParams = new URLSearchParams();
-    queryParams.set('branchId', params.branchId);
+    queryParams.set('locationId', params.locationId);
     if (params.productVariantId) queryParams.set('productVariantId', params.productVariantId);
     if (params.startDate) queryParams.set('startDate', params.startDate);
     if (params.endDate) queryParams.set('endDate', params.endDate);
-    return this.request<any[]>(`/inventory/stock-movements?${queryParams.toString()}`);
+    return this.request<StockMovement[]>(`/inventory/stock-movements?${queryParams.toString()}`);
   }
 
   async getStockStatus(params?: {
-    branchId?: string;
+    locationId?: string;
     size?: string;
     category?: string;
     brand?: string;
   }) {
     const queryParams = new URLSearchParams();
-    if (params?.branchId) queryParams.set('branchId', params.branchId);
+    if (params?.locationId) queryParams.set('locationId', params.locationId);
     if (params?.size) queryParams.set('size', params.size);
     if (params?.category) queryParams.set('category', params.category);
     if (params?.brand) queryParams.set('brand', params.brand);
     const query = queryParams.toString();
-    return this.request<any[]>(`/inventory/stock-status${query ? `?${query}` : ''}`);
+    return this.request<Inventory[]>(`/inventory/stock-status${query ? `?${query}` : ''}`);
   }
 
-  async getLocalStockReport(branchId: string) {
-    return this.request<any[]>(`/inventory/branch/${branchId}/report`);
+  async getLocalStockReport(locationId: string) {
+    return this.request<StockReport[]>(`/inventory/location/${locationId}/report`);
   }
 
   // Invoice endpoints
@@ -345,7 +401,8 @@ class ApiClient {
     items: Array<{ productVariantId: string; quantity: number }>;
     taxAmount?: number;
     changeAmount?: number;
-    branchId?: string;
+    locationId?: string;
+    customerName?: string;
   }) {
     return this.request<Invoice>('/invoices', {
       method: 'POST',
@@ -357,38 +414,38 @@ class ApiClient {
     return this.request<Invoice>(`/invoices/${id}`);
   }
 
-  async getInvoicesByBranch(branchId: string) {
-    return this.request<Invoice[]>(`/invoices/branch/${branchId}`);
+  async getInvoicesByLocation(locationId: string) {
+    return this.request<Invoice[]>(`/invoices/location/${locationId}`);
   }
 
   async getInvoicesByTenant() {
     return this.request<Invoice[]>('/invoices/tenant/all');
   }
 
-  async getInvoicesByDateRange(branchId: string, startDate: string, endDate: string) {
+  async getInvoicesByDateRange(locationId: string, startDate: string, endDate: string) {
     return this.request<Invoice[]>(
-      `/invoices/reports/date-range?branchId=${branchId}&startDate=${startDate}&endDate=${endDate}`
+      `/invoices/reports/date-range?locationId=${locationId}&startDate=${startDate}&endDate=${endDate}`
     );
   }
 
-  async calculateProfit(branchId: string, startDate: string, endDate: string) {
+  async calculateProfit(locationId: string, startDate: string, endDate: string) {
     return this.request<{
       totalRevenue: number;
       totalCost: number;
       profit: number;
       invoiceCount: number;
-    }>(`/invoices/reports/profit?branchId=${branchId}&startDate=${startDate}&endDate=${endDate}`);
+    }>(`/invoices/reports/profit?locationId=${locationId}&startDate=${startDate}&endDate=${endDate}`);
   }
 
-  async getDailySales(branchId: string, date?: string) {
+  async getDailySales(locationId: string, date?: string) {
     const dateParam = date || new Date().toISOString().split('T')[0];
     return this.request<{
       date: string;
-      branchId: string;
+      locationId: string;
       totalRevenue: number;
       totalInvoices: number;
       invoices: Invoice[];
-    }>(`/invoices/reports/daily-sales?branchId=${branchId}&date=${dateParam}`);
+    }>(`/invoices/reports/daily-sales?locationId=${locationId}&date=${dateParam}`);
   }
 
   // User endpoints
@@ -396,22 +453,29 @@ class ApiClient {
     return this.request<User[]>('/users/tenant');
   }
 
-  async getUsersByBranch(branchId: string) {
-    return this.request<User[]>(`/users/branch/${branchId}`);
+  async getUsersByLocation(locationId: string) {
+    return this.request<User[]>(`/users/location/${locationId}`);
   }
 
   async getUser(id: string) {
     return this.request<User>(`/users/${id}`);
   }
 
-  async createBranchUser(data: { email: string; password: string; branchId: string }) {
-    return this.request<User>('/users/branch-user', {
+  async createLocationUser(data: { email: string; password: string; locationId: string }) {
+    return this.request<User>('/users/location-user', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async updateUser(id: string, data: { email?: string; branchId?: string }) {
+  async createStoreAdmin(data: { email: string; password: string; tenantId?: string; locationId?: string }) {
+    return this.request<User>('/users/store-admin', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateUser(id: string, data: { email?: string; locationId?: string }) {
     return this.request<User>(`/users/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -424,20 +488,54 @@ class ApiClient {
     });
   }
 
+  async toggleUserStatus(id: string) {
+    return this.request<User>(`/users/${id}/toggle-status`, {
+      method: 'PATCH',
+    });
+  }
+
   // System endpoints
   async getSystemOverview() {
     return this.request<{
       summary: {
         totalTenants: number;
-        totalBranches: number;
+        totalLocations: number;
         totalUsers: number;
         totalInventoryItems: number;
         totalRevenueLast30Days: number;
       };
-      tenants: any[];
-      branches: any[];
-      users: any[];
-      inventoryItems: any[];
+      tenants: Array<{
+        id: string;
+        name: string;
+        subscriptionStatus: string;
+        createdAt: string | Date;
+        locationCount: number;
+      }>;
+      locations: Array<{
+        id: string;
+        name: string;
+        address?: string;
+        phone?: string;
+        tenantName: string;
+        tenantId: string;
+      }>;
+      users: Array<{
+        id: string;
+        email: string;
+        role: string;
+        tenantName: string | null;
+        locationName: string | null;
+      }>;
+      inventoryItems: Array<{
+        id: string;
+        productName: string;
+        variantName: string;
+        quantity: number;
+        costPrice: number;
+        sellingPrice: number;
+        locationName: string;
+        tenantName: string;
+      }>;
       revenue: {
         total: number;
         byTenant: Array<{
@@ -445,9 +543,22 @@ class ApiClient {
           totalRevenue: number;
           invoiceCount: number;
         }>;
+        byLocation?: Array<{
+          tenantName: string;
+          locationName: string;
+          totalRevenue: number;
+          invoiceCount: number;
+        }>;
       };
       recentActivity: {
-        recentInvoices: Invoice[];
+        recentInvoices: Array<{
+          id: string;
+          invoiceNumber: string;
+          totalAmount: number;
+          tenantName: string;
+          locationName: string;
+          createdAt: string | Date;
+        }>;
       };
       timestamp: Date;
     }>('/system/overview');

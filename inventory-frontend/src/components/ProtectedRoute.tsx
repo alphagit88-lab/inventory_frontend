@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: ('super_admin' | 'store_admin' | 'branch_user')[];
+  allowedRoles?: ('super_admin' | 'store_admin' | 'location_user')[];
 }
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
@@ -18,7 +18,10 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
       if (!user) {
         router.push('/login');
       } else if (allowedRoles && !allowedRoles.includes(user.role)) {
-        router.push('/unauthorized');
+        // Super Admin can access all routes
+        if (user.role !== 'super_admin') {
+          router.push('/unauthorized');
+        }
       }
     }
   }, [user, loading, allowedRoles, router]);
@@ -35,7 +38,8 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     return null;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  // Super Admin can access all routes
+  if (allowedRoles && !allowedRoles.includes(user.role) && user.role !== 'super_admin') {
     return null;
   }
 

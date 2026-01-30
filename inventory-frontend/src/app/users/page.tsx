@@ -3,28 +3,56 @@
 import { useEffect, useState } from 'react';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Layout } from '@/components/Layout';
-import { api, User, Branch } from '@/lib/api';
+import { api, User, Location, Tenant } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function UsersPage() {
   const { user } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
-  const [branches, setBranches] = useState<Branch[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ email: '', password: '', branchId: '' });
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    role: 'location_user' as 'store_admin' | 'location_user',
+    tenantId: '',
+    locationId: ''
+  });
   const [error, setError] = useState('');
 
   useEffect(() => {
     fetchUsers();
-    fetchBranches();
-  }, []);
+    if (user?.role === 'super_admin') {
+      fetchTenants();
+    }
+    if (user?.tenantId) {
+      fetchLocations();
+    }
+  }, [user?.tenantId, user?.role]);
+
+  const fetchTenants = async () => {
+    try {
+      const data = await api.getTenants();
+      setTenants(data);
+    } catch (error) {
+      console.error('Error fetching tenants:', error);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
       const data = await api.getUsersByTenant();
-      // Filter out the current logged-in user as an extra safety measure
-      const filteredUsers = data.filter((u) => u.id !== user?.id && u.role === 'branch_user');
+      // Filter out current user
+      let filteredUsers = data.filter((u) => u.id !== user?.id);
+
+      // Store Admin sees only location users
+      // Super Admin sees all users (store_admin and location_user)
+      if (user?.role === 'store_admin') {
+        filteredUsers = filteredUsers.filter((u) => u.role === 'location_user');
+      }
+
       setUsers(filteredUsers);
     } catch (error) {
       if (error instanceof Error) {
@@ -37,10 +65,10 @@ export default function UsersPage() {
     }
   };
 
-  const fetchBranches = async () => {
+  const fetchLocations = async () => {
     try {
-      const data = await api.getBranches();
-      setBranches(data);
+      const data = await api.getLocations();
+      setLocations(data);
     } catch (error) {
       if (error instanceof Error) {
         setError(error.message);
@@ -52,9 +80,20 @@ export default function UsersPage() {
     e.preventDefault();
     setError('');
     try {
-      await api.createBranchUser(formData);
+      if (formData.role === 'store_admin') {
+        // Create store admin (super_admin only)
+        await api.createStoreAdmin({
+          email: formData.email,
+          password: formData.password,
+          tenantId: formData.tenantId || undefined,
+          locationId: formData.locationId || undefined
+        });
+      } else {
+        // Create location user
+        await api.createLocationUser({ email: formData.email, password: formData.password, locationId: formData.locationId });
+      }
       setShowModal(false);
-      setFormData({ email: '', password: '', branchId: '' });
+      setFormData({ email: '', password: '', role: 'location_user', tenantId: '', locationId: '' });
       fetchUsers();
     } catch (error) {
       if (error instanceof Error) {
@@ -79,6 +118,19 @@ export default function UsersPage() {
     }
   };
 
+  const handleToggleStatus = async (id: string) => {
+    try {
+      await api.toggleUserStatus(id);
+      fetchUsers();
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError('An unknown error occurred.');
+      }
+    }
+  };
+
   return (
     <ProtectedRoute allowedRoles={['store_admin', 'super_admin']}>
       <Layout>
@@ -87,7 +139,11 @@ export default function UsersPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-4xl font-bold text-gray-900">Users</h1>
-              <p className="mt-2 text-base text-gray-600">Manage branch users and staff</p>
+              <p className="mt-2 text-base text-gray-600">
+                {user?.role === 'super_admin'
+                  ? 'Manage all users in the system'
+                  : 'Manage location users and staff'}
+              </p>
             </div>
             <button
               onClick={() => setShowModal(true)}
@@ -172,7 +228,10 @@ export default function UsersPage() {
                         Role
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Branch
+                        Location
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                        Status
                       </th>
                       <th className="px-6 py-4 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         Actions
@@ -182,8 +241,8 @@ export default function UsersPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {users.length === 0 ? (
                       <tr>
-                        <td colSpan={4} className="px-6 py-12 text-center text-sm text-gray-500">
-                          No branch users found. Create your first branch user to get started.
+                        <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-500">
+                          No location users found. Create your first location user to get started.
                         </td>
                       </tr>
                     ) : (
@@ -243,34 +302,54 @@ export default function UsersPage() {
                                 />
                               </svg>
                               <span className="text-sm text-gray-900">
-                                {userItem.branch?.name
-                                  ? userItem.branch.name
-                                  : userItem.branchId
-                                  ? 'Assigned'
-                                  : 'Not assigned'}
+                                {userItem.location?.name
+                                  ? userItem.location.name
+                                  : userItem.locationId
+                                    ? 'Assigned'
+                                    : 'Not assigned'}
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <button
-                              onClick={() => handleDelete(userItem.id || userItem.userId || '')}
-                              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-red-600 transition-colors duration-200 hover:bg-red-50 hover:text-red-700"
+                              onClick={() => handleToggleStatus(userItem.id || userItem.userId || '')}
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${userItem.isActive !== false
+                                ? 'bg-green-500 focus:ring-green-500'
+                                : 'bg-gray-300 focus:ring-gray-400'
+                                }`}
                             >
-                              <svg
-                                className="h-4 w-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                />
-                              </svg>
-                              Delete
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${userItem.isActive !== false ? 'translate-x-6' : 'translate-x-1'
+                                  }`}
+                              />
                             </button>
+                            <span className={`ml-3 text-xs font-medium ${userItem.isActive !== false ? 'text-green-700' : 'text-gray-500'
+                              }`}>
+                              {userItem.isActive !== false ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => handleDelete(userItem.id || userItem.userId || '')}
+                                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-red-600 transition-colors duration-200 hover:bg-red-50 hover:text-red-700"
+                              >
+                                <svg
+                                  className="h-4 w-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                                Delete
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -286,7 +365,9 @@ export default function UsersPage() {
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
               <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl ring-1 ring-gray-200/50">
                 <div className="mb-6 flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-gray-900">Create Branch User</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {formData.role === 'store_admin' ? 'Create Store Admin' : 'Create Location User'}
+                  </h2>
                   <button
                     onClick={() => setShowModal(false)}
                     className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
@@ -358,60 +439,231 @@ export default function UsersPage() {
                       />
                     </div>
                   </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-gray-700">Branch</label>
-                    <div className="relative">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                        <svg
-                          className="h-5 w-5 text-gray-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+
+                  {/* Role Field - Only for Super Admin */}
+                  {user?.role === 'super_admin' && (
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-gray-700">Role</label>
+                      <div className="relative">
+                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                          <svg
+                            className="h-5 w-5 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                            />
+                          </svg>
+                        </div>
+                        <select
+                          value={formData.role}
+                          onChange={(e) => setFormData({ ...formData, role: e.target.value as 'store_admin' | 'location_user', tenantId: '', locationId: '' })}
+                          className="block w-full appearance-none rounded-xl border border-gray-300 bg-gray-50 pl-10 pr-10 py-3 text-gray-900 transition-all duration-200 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                          />
-                        </svg>
-                      </div>
-                      <select
-                        required
-                        value={formData.branchId}
-                        onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
-                        className="block w-full appearance-none rounded-xl border border-gray-300 bg-gray-50 pl-10 pr-10 py-3 text-gray-900 transition-all duration-200 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                      >
-                        <option value="">Select a branch</option>
-                        {branches.map((branch) => (
-                          <option key={branch.id} value={branch.id}>
-                            {branch.name}
-                          </option>
-                        ))}
-                      </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                        <svg
-                          className="h-5 w-5 text-gray-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 9l-7 7-7-7"
-                          />
-                        </svg>
+                          <option value="location_user">Location User (Staff/Cashier)</option>
+                          <option value="store_admin">Store Admin</option>
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                          <svg
+                            className="h-5 w-5 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
+
+                  {/* Shop Field - For Store Admin (Super Admin only) */}
+                  {user?.role === 'super_admin' && formData.role === 'store_admin' && (
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-gray-700">
+                        Shop (Tenant) <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                          <svg
+                            className="h-5 w-5 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                            />
+                          </svg>
+                        </div>
+                        <select
+                          required
+                          value={formData.tenantId}
+                          onChange={(e) => {
+                            setFormData({ ...formData, tenantId: e.target.value, locationId: '' });
+                            // Fetch locations for selected tenant
+                            if (e.target.value) {
+                              api.getLocations().then(setLocations).catch(console.error);
+                            }
+                          }}
+                          className="block w-full appearance-none rounded-xl border border-gray-300 bg-gray-50 pl-10 pr-10 py-3 text-gray-900 transition-all duration-200 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        >
+                          <option value="">Select a shop</option>
+                          {tenants.map((tenant) => (
+                            <option key={tenant.id} value={tenant.id}>
+                              {tenant.name}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                          <svg
+                            className="h-5 w-5 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Location Field - For Store Admin (optional) */}
+                  {user?.role === 'super_admin' && formData.role === 'store_admin' && formData.tenantId && (
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-gray-700">
+                        Location <span className="text-gray-500 text-xs">(Optional)</span>
+                      </label>
+                      <div className="relative">
+                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                          <svg
+                            className="h-5 w-5 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                          </svg>
+                        </div>
+                        <select
+                          value={formData.locationId}
+                          onChange={(e) => setFormData({ ...formData, locationId: e.target.value })}
+                          className="block w-full appearance-none rounded-xl border border-gray-300 bg-gray-50 pl-10 pr-10 py-3 text-gray-900 transition-all duration-200 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        >
+                          <option value="">No specific location</option>
+                          {locations.map((location) => (
+                            <option key={location.id} value={location.id}>
+                              {location.name}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                          <svg
+                            className="h-5 w-5 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Location Field - Only for Location User */}
+                  {formData.role === 'location_user' && (
+                    <div>
+                      <label className="mb-2 block text-sm font-semibold text-gray-700">Location</label>
+                      <div className="relative">
+                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                          <svg
+                            className="h-5 w-5 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                            />
+                          </svg>
+                        </div>
+                        <select
+                          required
+                          value={formData.locationId}
+                          onChange={(e) => setFormData({ ...formData, locationId: e.target.value })}
+                          className="block w-full appearance-none rounded-xl border border-gray-300 bg-gray-50 pl-10 pr-10 py-3 text-gray-900 transition-all duration-200 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        >
+                          <option value="">Select a location</option>
+                          {locations.map((location) => (
+                            <option key={location.id} value={location.id}>
+                              {location.name}
+                            </option>
+                          ))}
+                        </select>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                          <svg
+                            className="h-5 w-5 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex justify-end gap-3 pt-4">
                     <button
                       type="button"

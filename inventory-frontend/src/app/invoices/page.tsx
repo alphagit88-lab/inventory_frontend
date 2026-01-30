@@ -14,9 +14,12 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Re-fetch invoices when user context changes (tenant or location)
   useEffect(() => {
-    fetchInvoices();
-  }, [user]);
+    if (user) {
+      fetchInvoices();
+    }
+  }, [user?.tenantId, user?.locationId, user?.role]);
 
   const fetchInvoices = async () => {
     if (!user) {
@@ -26,16 +29,29 @@ export default function InvoicesPage() {
 
     try {
       let data: Invoice[];
-      
-      // Branch Users: fetch by branch
-      if (user.role === 'branch_user') {
-        if (!user.branchId) {
-          setError('Your account is not assigned to a branch. Please contact your administrator.');
+
+      // Super Admin: respect context if set, otherwise fetch all
+      if (user.role === 'super_admin') {
+        if (user.locationId) {
+          // Super Admin switched to specific location context
+          data = await api.getInvoicesByLocation(user.locationId);
+        } else if (user.tenantId) {
+          // Super Admin switched to specific tenant context
+          data = await api.getInvoicesByTenant();
+        } else {
+          // Super Admin without context - fetch all
+          data = await api.getInvoicesByTenant();
+        }
+      }
+      // Location Users: fetch by location
+      else if (user.role === 'location_user') {
+        if (!user.locationId) {
+          setError('Your account is not assigned to a location. Please contact your administrator.');
           setLoading(false);
           return;
         }
-        data = await api.getInvoicesByBranch(user.branchId);
-      } 
+        data = await api.getInvoicesByLocation(user.locationId);
+      }
       // Store Admins: fetch by tenant
       else if (user.role === 'store_admin') {
         if (!user.tenantId) {
@@ -44,14 +60,13 @@ export default function InvoicesPage() {
           return;
         }
         data = await api.getInvoicesByTenant();
-      } 
-      // Super Admin: no access to invoices
+      }
       else {
-        setError('You do not have permission to view invoices.');
+        setError('Unknown role. Please contact your administrator.');
         setLoading(false);
         return;
       }
-      
+
       setInvoices(data);
       setError('');
     } catch (error) {
@@ -77,7 +92,7 @@ export default function InvoicesPage() {
               <h1 className="text-3xl font-bold text-gray-900">Invoices</h1>
               <p className="mt-2 text-sm text-gray-600">View all invoices</p>
             </div>
-            {user?.role === 'branch_user' && (
+            {user?.role === 'location_user' && (
               <Link
                 href="/invoices/create"
                 className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
@@ -116,6 +131,9 @@ export default function InvoicesPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Tax
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Discount
+                    </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
@@ -135,6 +153,20 @@ export default function InvoicesPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         ${Number(invoice.tax_amount).toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {invoice.items?.some(item => item.discount && item.discount > 0) ? (
+                          <span className="text-green-600 font-medium">
+                            ${invoice.items.reduce((total, item) => {
+                              if (item.discount && item.discount > 0 && item.original_price) {
+                                return total + ((item.original_price - item.unit_price) * item.quantity);
+                              }
+                              return total;
+                            }, 0).toFixed(2)}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <Link

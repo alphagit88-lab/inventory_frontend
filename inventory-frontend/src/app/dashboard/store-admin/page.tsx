@@ -5,10 +5,12 @@ import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Layout } from '@/components/Layout';
 import { api } from '@/lib/api';
 import Link from 'next/link';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function StoreAdminDashboard() {
+  const { user } = useAuth();
   const [stats, setStats] = useState({
-    branches: 0,
+    locations: 0,
     products: 0,
     inventoryItems: 0,
     invoices: 0,
@@ -18,15 +20,21 @@ export default function StoreAdminDashboard() {
 
   useEffect(() => {
     const fetchStats = async () => {
+      // Only fetch stats if user has a tenantId
+      if (!user?.tenantId) {
+        setLoading(false);
+        return;
+      }
+      
       try {
-        const [branches, products, inventory, invoices] = await Promise.all([
-          api.getBranches().catch(() => []),
+        const [locations, products, inventory, invoices] = await Promise.all([
+          api.getLocations().catch(() => []),
           api.getProducts().catch(() => []),
           api.getInventoryByTenant().catch(() => []),
           api.getInvoicesByTenant().catch(() => []),
         ]);
         setStats({
-          branches: branches.length,
+          locations: locations.length,
           products: products.length,
           inventoryItems: inventory.length,
           invoices: invoices.length,
@@ -42,7 +50,50 @@ export default function StoreAdminDashboard() {
       }
     };
     fetchStats();
-  }, []);
+  }, [user?.tenantId]);
+  
+  // Check if Store Admin has tenantId assigned
+  if (user && !user.tenantId) {
+    return (
+      <ProtectedRoute allowedRoles={['store_admin']}>
+        <Layout>
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-4xl font-bold text-gray-900">Store Admin Dashboard</h1>
+              <p className="mt-2 text-base text-gray-600">Manage your shop</p>
+            </div>
+            <div className="rounded-xl bg-amber-50 p-6 ring-1 ring-amber-200">
+              <div className="flex items-start">
+                <svg
+                  className="h-6 w-6 text-amber-600 mr-3 mt-0.5 shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  />
+                </svg>
+                <div>
+                  <h3 className="text-lg font-semibold text-amber-900">Shop Assignment Required</h3>
+                  <p className="mt-2 text-sm text-amber-800">
+                    Your Store Admin account is not assigned to a shop. To use this system, you need to be assigned to a shop.
+                  </p>
+                  <p className="mt-4 text-sm text-amber-900 font-medium">
+                    Please contact your Super Administrator to assign you to a shop, or register a new account with a shop assigned.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Layout>
+      </ProtectedRoute>
+    );
+  }
+  
   if (error) {
     return (
       <ProtectedRoute allowedRoles={['store_admin']}>
@@ -108,7 +159,7 @@ export default function StoreAdminDashboard() {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              {/* Branches Card */}
+              {/* Locations Card */}
               <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 p-6 shadow-lg shadow-blue-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-blue-500/30 hover:-translate-y-1">
                 <div className="relative z-10">
                   <div className="mb-4 flex items-center justify-between">
@@ -134,10 +185,10 @@ export default function StoreAdminDashboard() {
                       </svg>
                     </div>
                   </div>
-                  <div className="text-sm font-medium text-blue-100">Branches</div>
-                  <div className="mt-2 text-4xl font-bold text-white">{stats.branches}</div>
+                  <div className="text-sm font-medium text-blue-100">Locations</div>
+                  <div className="mt-2 text-4xl font-bold text-white">{stats.locations}</div>
                   <Link
-                    href="/branches"
+                    href="/locations"
                     className="mt-4 inline-flex items-center text-sm font-semibold text-blue-100 hover:text-white transition-colors"
                   >
                     View all
@@ -308,7 +359,7 @@ export default function StoreAdminDashboard() {
             </div>
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               <Link
-                href="/branches"
+                href="/locations"
                 className="group relative overflow-hidden rounded-2xl bg-white p-6 shadow-lg ring-1 ring-gray-200/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
               >
                 <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg">
@@ -327,10 +378,10 @@ export default function StoreAdminDashboard() {
                     />
                   </svg>
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">Manage Branches</h3>
-                <p className="mt-2 text-sm text-gray-600">Create and manage store branches</p>
+                <h3 className="text-lg font-bold text-gray-900">Manage Locations</h3>
+                <p className="mt-2 text-sm text-gray-600">Create and manage store locations</p>
                 <div className="mt-4 flex items-center text-sm font-semibold text-blue-600 group-hover:text-blue-700">
-                  Go to Branches
+                  Go to Locations
                   <svg
                     className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1"
                     fill="none"
@@ -430,7 +481,7 @@ export default function StoreAdminDashboard() {
                   </svg>
                 </div>
                 <h3 className="text-lg font-bold text-gray-900">Manage Users</h3>
-                <p className="mt-2 text-sm text-gray-600">Create branch users</p>
+                <p className="mt-2 text-sm text-gray-600">Create location users</p>
                 <div className="mt-4 flex items-center text-sm font-semibold text-emerald-600 group-hover:text-emerald-700">
                   Go to Users
                   <svg

@@ -16,8 +16,8 @@ export default function Home() {
           router.push('/dashboard/super-admin');
         } else if (role === 'store_admin') {
           router.push('/dashboard/store-admin');
-        } else if (role === 'branch_user') {
-          router.push('/dashboard/branch-user');
+        } else if (role === 'location_user') {
+          router.push('/dashboard/location-user');
         } else {
           router.push('/dashboard');
         }

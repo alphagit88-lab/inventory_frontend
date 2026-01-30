@@ -1,37 +1,48 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/lib/api';
 import Link from 'next/link';
 
-export default function LoginPage() {
+export default function RegisterSuperAdminPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login, user } = useAuth();
   const router = useRouter();
 
-  // Redirect if already logged in
-  useEffect(() => {
-    if (user) {
-      router.push('/dashboard');
-    }
-  }, [user, router]);
-
-  const handleInitialLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await login(email, password);
+      await api.registerSuperAdmin({
+        email,
+        password,
+        role: 'super_admin',
+      });
+      
+      alert('Super Admin account created successfully! Please login.');
+      router.push('/login');
     } catch (err) {
       if (err instanceof Error) {
-        setError(err.message || 'Login failed');
+        setError(err.message || 'Registration failed');
       } else {
-        setError('Login failed');
+        setError('Registration failed');
       }
     } finally {
       setLoading(false);
@@ -43,7 +54,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Card */}
         <div className="rounded-2xl bg-white p-8 shadow-xl ring-1 ring-gray-200/50">
-          {/* Logo/Header Section inside card */}
+          {/* Logo/Header Section */}
           <div className="mb-8 text-center">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 shadow-lg">
               <svg
@@ -61,14 +72,14 @@ export default function LoginPage() {
               </svg>
             </div>
             <h2 className="text-3xl font-bold text-gray-900">
-              Welcome back
+              Create Super Admin
             </h2>
             <p className="mt-2 text-sm text-gray-600">
-              Sign in to your inventory management account
+              Set up your system administrator account
             </p>
           </div>
 
-          <form className="space-y-6" onSubmit={handleInitialLogin}>
+          <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
               <div className="rounded-xl bg-red-50 p-4 ring-1 ring-red-100">
                 <div className="flex items-start">
@@ -121,7 +132,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="block w-full rounded-xl border border-gray-300 bg-gray-50 pl-10 pr-4 py-3 text-gray-900 placeholder:text-gray-400 transition-all duration-200 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                    placeholder="you@example.com"
+                    placeholder="admin@example.com"
                   />
                 </div>
               </div>
@@ -151,12 +162,47 @@ export default function LoginPage() {
                     id="password"
                     name="password"
                     type="password"
-                    autoComplete="current-password"
+                    autoComplete="new-password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="block w-full rounded-xl border border-gray-300 bg-gray-50 pl-10 pr-4 py-3 text-gray-900 placeholder:text-gray-400 transition-all duration-200 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                    placeholder="Enter your password"
+                    placeholder="Enter password (min. 6 characters)"
+                  />
+                </div>
+              </div>
+
+              {/* Confirm Password Field */}
+              <div>
+                <label htmlFor="confirmPassword" className="mb-2 block text-sm font-semibold text-gray-700">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <svg
+                      className="h-5 w-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                      />
+                    </svg>
+                  </div>
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    autoComplete="new-password"
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="block w-full rounded-xl border border-gray-300 bg-gray-50 pl-10 pr-4 py-3 text-gray-900 placeholder:text-gray-400 transition-all duration-200 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    placeholder="Confirm your password"
                   />
                 </div>
               </div>
@@ -189,26 +235,21 @@ export default function LoginPage() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                     />
                   </svg>
-                  Signing in...
+                  Creating account...
                 </span>
               ) : (
-                'Sign in'
+                'Create Super Admin Account'
               )}
             </button>
 
-            {/* Super Admin Registration Link */}
+            {/* Back to Login Link */}
             <div className="text-center">
-              <div className="rounded-xl bg-gray-50 p-4 ring-1 ring-gray-200">
-                <p className="text-xs text-gray-600">
-                  <strong className="font-semibold text-gray-900">First time setup?</strong><br />
-                  <Link 
-                    href="/register-super-admin"
-                    className="text-blue-600 hover:text-blue-700 font-medium transition-colors duration-200"
-                  >
-                    Create Super Admin Account
-                  </Link>
-                </p>
-              </div>
+              <Link
+                href="/login"
+                className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors duration-200"
+              >
+                ← Back to Login
+              </Link>
             </div>
           </form>
         </div>
@@ -216,4 +257,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

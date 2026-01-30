@@ -11,10 +11,10 @@ type TenantItem = {
   name: string;
   subscriptionStatus: string;
   createdAt: string | Date;
-  branchCount: number;
+  locationCount: number;
 };
 
-type BranchItem = {
+type LocationItem = {
   id: string;
   name: string;
   address?: string;
@@ -27,16 +27,15 @@ type UserItem = {
   email: string;
   role: string;
   tenantName: string | null;
-  branchName: string | null;
+  locationName: string | null;
 };
 
 type InventoryItem = {
   id: string;
   productName: string;
-  brand: string;
-  size: string;
+  variantName: string;
   quantity: number;
-  branchName: string;
+  locationName: string;
   tenantName: string;
 };
 
@@ -46,9 +45,16 @@ type RevenueItem = {
   invoiceCount: number;
 };
 
+type LocationRevenueItem = {
+  tenantName: string;
+  locationName: string;
+  totalRevenue: number;
+  invoiceCount: number;
+};
+
 export default function SystemPage() {
   const tenantsSectionRef = useRef<HTMLDivElement>(null);
-  const branchesSectionRef = useRef<HTMLDivElement>(null);
+  const locationsSectionRef = useRef<HTMLDivElement>(null);
   const usersSectionRef = useRef<HTMLDivElement>(null);
   const inventorySectionRef = useRef<HTMLDivElement>(null);
   const revenueSectionRef = useRef<HTMLDivElement>(null);
@@ -56,18 +62,19 @@ export default function SystemPage() {
   type Overview = {
     summary: {
       totalTenants: number;
-      totalBranches: number;
+      totalLocations: number;
       totalUsers: number;
       totalInventoryItems: number;
       totalRevenueLast30Days: number;
     };
     tenants: TenantItem[];
-    branches: BranchItem[];
+    locations: LocationItem[];
     users: UserItem[];
     inventoryItems: InventoryItem[];
     revenue: {
       total: number;
       byTenant: RevenueItem[];
+      byLocation?: LocationRevenueItem[];
     };
   };
 
@@ -96,13 +103,13 @@ export default function SystemPage() {
 
   const handleCardClick = (type: string) => {
     let ref: React.RefObject<HTMLDivElement> | null = null;
-    
+
     switch (type) {
       case 'tenants':
         ref = tenantsSectionRef as React.RefObject<HTMLDivElement>;
         break;
-      case 'branches':
-        ref = branchesSectionRef as React.RefObject<HTMLDivElement>;
+      case 'locations':
+        ref = locationsSectionRef as React.RefObject<HTMLDivElement>;
         break;
       case 'users':
         ref = usersSectionRef as React.RefObject<HTMLDivElement>;
@@ -230,7 +237,7 @@ export default function SystemPage() {
                 </button>
 
                 <button
-                  onClick={() => handleCardClick('branches')}
+                  onClick={() => handleCardClick('locations')}
                   className="group relative overflow-hidden rounded-2xl bg-linear-to-br from-indigo-500 to-indigo-600 p-6 shadow-lg shadow-indigo-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/30 hover:-translate-y-1 cursor-pointer text-left"
                 >
                   <div className="relative z-10">
@@ -257,9 +264,9 @@ export default function SystemPage() {
                         </svg>
                       </div>
                     </div>
-                    <div className="text-sm font-medium text-indigo-100">Total Branches</div>
+                    <div className="text-sm font-medium text-indigo-100">Total Locations</div>
                     <div className="mt-2 text-4xl font-bold text-white">
-                      {overview.summary.totalBranches}
+                      {overview.summary.totalLocations}
                     </div>
                     <div className="mt-3 flex items-center text-xs font-semibold text-indigo-100 group-hover:text-white">
                       Click to view
@@ -378,7 +385,7 @@ export default function SystemPage() {
 
                 <button
                   onClick={() => handleCardClick('revenue')}
-                  className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-red-500 to-red-600 p-6 shadow-lg shadow-red-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-red-500/30 hover:-translate-y-1 cursor-pointer text-left"
+                  className="group relative overflow-hidden rounded-2xl bg-linear-to-br from-red-500 to-red-600 p-6 shadow-lg shadow-red-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-red-500/30 hover:-translate-y-1 cursor-pointer text-left"
                 >
                   <div className="relative z-10">
                     <div className="mb-4 flex items-center justify-between">
@@ -444,7 +451,7 @@ export default function SystemPage() {
                             Status
                           </th>
                           <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Branches
+                            Locations
                           </th>
                           <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                             Created
@@ -483,13 +490,12 @@ export default function SystemPage() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span
-                                className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${
-                                  tenant.subscriptionStatus === 'active'
-                                    ? 'bg-green-100 text-green-800 ring-1 ring-green-200'
-                                    : tenant.subscriptionStatus === 'suspended'
+                                className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${tenant.subscriptionStatus === 'active'
+                                  ? 'bg-green-100 text-green-800 ring-1 ring-green-200'
+                                  : tenant.subscriptionStatus === 'suspended'
                                     ? 'bg-red-100 text-red-800 ring-1 ring-red-200'
                                     : 'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-200'
-                                }`}
+                                  }`}
                               >
                                 {tenant.subscriptionStatus === 'active' && (
                                   <svg
@@ -508,7 +514,7 @@ export default function SystemPage() {
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              {tenant.branchCount || 0}
+                              {tenant.locationCount || 0}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                               {formatDate(tenant.createdAt)}
@@ -521,14 +527,14 @@ export default function SystemPage() {
                 </div>
               )}
 
-              {overview.branches && overview.branches.length > 0 && (
+              {overview.locations && overview.locations.length > 0 && (
                 <div
-                  ref={branchesSectionRef}
+                  ref={locationsSectionRef}
                   className="rounded-2xl bg-white shadow-lg ring-1 ring-gray-200/50 overflow-hidden"
                 >
                   <div className="bg-linear-to-r from-gray-50 to-gray-100 px-6 py-5 border-b border-gray-200">
-                    <h2 className="text-xl font-bold text-gray-900">Branches</h2>
-                    <p className="mt-1 text-sm text-gray-600">All store branches across shops</p>
+                    <h2 className="text-xl font-bold text-gray-900">Locations</h2>
+                    <p className="mt-1 text-sm text-gray-600">All store locations across shops</p>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
@@ -549,9 +555,9 @@ export default function SystemPage() {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {overview.branches.map((branch) => (
+                        {overview.locations.map((location) => (
                           <tr
-                            key={branch.id}
+                            key={location.id}
                             className="transition-colors duration-150 hover:bg-gray-50"
                           >
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -579,19 +585,19 @@ export default function SystemPage() {
                                 </div>
                                 <div className="ml-4">
                                   <div className="text-sm font-semibold text-gray-900">
-                                    {branch.name}
+                                    {location.name}
                                   </div>
                                 </div>
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              {branch.tenantName}
+                              {location.tenantName}
                             </td>
                             <td className="px-6 py-4 text-sm text-gray-600">
-                              {branch.address || <span className="text-gray-400">N/A</span>}
+                              {location.address || <span className="text-gray-400">N/A</span>}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              {branch.phone || <span className="text-gray-400">N/A</span>}
+                              {location.phone || <span className="text-gray-400">N/A</span>}
                             </td>
                           </tr>
                         ))}
@@ -624,7 +630,7 @@ export default function SystemPage() {
                             Shop
                           </th>
                           <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Branch
+                            Location
                           </th>
                         </tr>
                       </thead>
@@ -667,7 +673,7 @@ export default function SystemPage() {
                               {user.tenantName || <span className="text-gray-400">N/A</span>}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              {user.branchName || <span className="text-gray-400">N/A</span>}
+                              {user.locationName || <span className="text-gray-400">N/A</span>}
                             </td>
                           </tr>
                         ))}
@@ -696,13 +702,13 @@ export default function SystemPage() {
                             Product
                           </th>
                           <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Brand/Size
+                            Variant Name
                           </th>
                           <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                             Quantity
                           </th>
                           <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                            Branch
+                            Location
                           </th>
                           <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                             Shop
@@ -720,7 +726,7 @@ export default function SystemPage() {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                {item.brand} / {item.size}
+                                {item.variantName}
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -729,7 +735,7 @@ export default function SystemPage() {
                               </span>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              {item.branchName}
+                              {item.locationName}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
                               {item.tenantName}
@@ -830,6 +836,109 @@ export default function SystemPage() {
                         />
                       </svg>
                       <p className="mt-4 text-gray-600">No revenue data for the last 30 days</p>
+                    </div>
+                  )}
+
+                  {/* Location-wise Revenue Breakdown */}
+                  {overview.revenue.byLocation && overview.revenue.byLocation.length > 0 && (
+                    <div className="mt-8 border-t border-gray-200">
+                      <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4">
+                        <h3 className="text-lg font-bold text-gray-900">Revenue by Location</h3>
+                        <p className="mt-1 text-xs text-gray-600">Detailed breakdown by store location</p>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                          <thead className="bg-gray-50">
+                            <tr>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                Shop
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                Location
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                Total Revenue
+                              </th>
+                              <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                                Invoice Count
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="bg-white divide-y divide-gray-200">
+                            {overview.revenue.byLocation.map((revenue, index) => (
+                              <tr
+                                key={index}
+                                className="transition-colors duration-150 hover:bg-gray-50"
+                              >
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+                                      <svg
+                                        className="h-5 w-5"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                                        />
+                                      </svg>
+                                    </div>
+                                    <div className="ml-4">
+                                      <div className="text-sm font-semibold text-gray-900">
+                                        {revenue.tenantName}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="flex items-center">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 text-white">
+                                      <svg
+                                        className="h-4 w-4"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                                        />
+                                        <path
+                                          strokeLinecap="round"
+                                          strokeLinejoin="round"
+                                          strokeWidth={2}
+                                          d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                                        />
+                                      </svg>
+                                    </div>
+                                    <div className="ml-3">
+                                      <div className="text-sm font-semibold text-gray-900">
+                                        {revenue.locationName}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span className="text-sm font-bold text-emerald-600">
+                                    ${Number(revenue.totalRevenue || 0).toFixed(2)}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-indigo-100 text-indigo-800">
+                                    {revenue.invoiceCount}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
                 </div>

@@ -7,7 +7,7 @@ import { api, User } from '@/lib/api';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, tenantId?: string, locationId?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -34,8 +34,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshUser();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const response = await api.login(email, password);
+  const login = async (email: string, password: string, tenantId?: string, locationId?: string) => {
+    const response = await api.login(email, password, tenantId, locationId);
     setUser(response.user);
     router.push(getDashboardPath(response.user.role));
   };
@@ -56,8 +56,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return '/dashboard/super-admin';
       case 'store_admin':
         return '/dashboard/store-admin';
-      case 'branch_user':
-        return '/dashboard/branch-user';
+      case 'location_user':
+        return '/dashboard/location-user';
       default:
         return '/dashboard';
     }

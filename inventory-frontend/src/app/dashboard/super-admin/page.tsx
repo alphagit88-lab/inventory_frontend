@@ -3,11 +3,23 @@
 import { useEffect, useState } from 'react';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Layout } from '@/components/Layout';
+import { TenantLocationSelector } from '@/components/TenantLocationSelector';
 import { api } from '@/lib/api';
 import Link from 'next/link';
 
+interface OverviewSummary {
+  totalTenants?: number;
+  totalLocations?: number;
+  totalUsers?: number;
+  recentRevenue?: number;
+}
+
+interface Overview {
+  summary?: OverviewSummary;
+}
+
 export default function SuperAdminDashboard() {
-  const [overview, setOverview] = useState<any>(null);
+  const [overview, setOverview] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -33,6 +45,23 @@ export default function SuperAdminDashboard() {
             <h1 className="text-4xl font-bold text-gray-900">Super Admin Dashboard</h1>
             <p className="mt-2 text-base text-gray-600">System overview and shop management</p>
           </div>
+
+          {/* Tenant/Location Context Selector */}
+          <TenantLocationSelector onContextChange={() => {
+            // Refresh dashboard when context changes
+            setLoading(true);
+            const fetchOverview = async () => {
+              try {
+                const data = await api.getSystemOverview();
+                setOverview(data);
+              } catch (error) {
+                console.error('Failed to fetch overview:', error);
+              } finally {
+                setLoading(false);
+              }
+            };
+            fetchOverview();
+          }} />
 
           {/* Stats Cards */}
           {loading ? (
@@ -91,7 +120,7 @@ export default function SuperAdminDashboard() {
                 <div className="absolute -bottom-4 -left-4 h-32 w-32 rounded-full bg-white/5"></div>
               </div>
 
-              {/* Total Branches Card */}
+              {/* Total Locations Card */}
               <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 shadow-lg shadow-indigo-500/25 transition-all duration-300 hover:shadow-xl hover:shadow-indigo-500/30 hover:-translate-y-1">
                 <div className="relative z-10">
                   <div className="mb-4 flex items-center justify-between">
@@ -117,9 +146,9 @@ export default function SuperAdminDashboard() {
                       </svg>
                     </div>
                   </div>
-                  <div className="text-sm font-medium text-indigo-100">Total Branches</div>
+                  <div className="text-sm font-medium text-indigo-100">Total Locations</div>
                   <div className="mt-2 text-4xl font-bold text-white">
-                    {overview.summary?.totalBranches ?? 0}
+                    {overview.summary?.totalLocations ?? 0}
                   </div>
                 </div>
                 <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-white/10"></div>

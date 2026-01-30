@@ -4,20 +4,23 @@ import { useEffect, useState } from 'react';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Layout } from '@/components/Layout';
 import { api, Product } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function ProductsPage() {
+  const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showVariantModal, setShowVariantModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [formData, setFormData] = useState({ name: '', category: '' });
-  const [variantData, setVariantData] = useState({ brand: '', size: '' });
+  const [formData, setFormData] = useState({ name: '', category: '', discount: 0, product_code: '' });
+  const [variantData, setVariantData] = useState({ variant_name: '' });
   const [error, setError] = useState('');
 
+  // Re-fetch products when user context changes (tenant or location)
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [user?.tenantId, user?.locationId]);
 
   const fetchProducts = async () => {
     try {
@@ -40,7 +43,7 @@ export default function ProductsPage() {
     try {
       await api.createProduct(formData);
       setShowModal(false);
-      setFormData({ name: '', category: '' });
+      setFormData({ name: '', category: '', discount: 0, product_code: '' });
       fetchProducts();
     } catch (error) {
       if (error instanceof Error) {
@@ -58,7 +61,7 @@ export default function ProductsPage() {
     try {
       await api.createVariant(selectedProduct.id, variantData);
       setShowVariantModal(false);
-      setVariantData({ brand: '', size: '' });
+      setVariantData({ variant_name: '' });
       setSelectedProduct(null);
       fetchProducts();
     } catch (error) {
@@ -75,7 +78,7 @@ export default function ProductsPage() {
     try {
       await api.deleteProduct(id);
       fetchProducts();
-      } catch (error) {
+    } catch (error) {
       if (error instanceof Error) {
         setError(error.message);
       } else {
@@ -209,11 +212,18 @@ export default function ProductsPage() {
                           </div>
                           <div>
                             <h3 className="text-xl font-bold text-gray-900">{product.name}</h3>
-                            {product.category && (
-                              <p className="text-sm text-gray-500 mt-1">
-                                Category: <span className="font-medium text-gray-700">{product.category}</span>
-                              </p>
-                            )}
+                            <div className="flex gap-3 mt-1 text-sm text-gray-500">
+                              {product.product_code && (
+                                <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">
+                                  Code: {product.product_code}
+                                </span>
+                              )}
+                              {product.category && (
+                                <span>
+                                  Category: <span className="font-medium text-gray-700">{product.category}</span>
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                         {product.variants && product.variants.length > 0 && (
@@ -225,7 +235,7 @@ export default function ProductsPage() {
                                   key={variant.id}
                                   className="inline-flex items-center rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 px-3 py-1.5 text-xs font-semibold text-blue-800 ring-1 ring-blue-200"
                                 >
-                                  {variant.brand} - {variant.size}
+                                  {variant.variant_name}
                                 </span>
                               ))}
                             </div>
@@ -332,6 +342,33 @@ export default function ProductsPage() {
                     </div>
                   </div>
                   <div>
+                    <label className="mb-2 block text-sm font-semibold text-gray-700">Product Code</label>
+                    <div className="relative">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                        <svg
+                          className="h-5 w-5 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
+                          />
+                        </svg>
+                      </div>
+                      <input
+                        type="text"
+                        value={formData.product_code}
+                        onChange={(e) => setFormData({ ...formData, product_code: e.target.value })}
+                        className="block w-full rounded-xl border border-gray-300 bg-gray-50 pl-10 pr-4 py-3 text-gray-900 placeholder:text-gray-400 transition-all duration-200 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        placeholder="Enter product code (optional)"
+                      />
+                    </div>
+                  </div>
+                  <div>
                     <label className="mb-2 block text-sm font-semibold text-gray-700">Category</label>
                     <div className="relative">
                       <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -355,6 +392,36 @@ export default function ProductsPage() {
                         onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                         className="block w-full rounded-xl border border-gray-300 bg-gray-50 pl-10 pr-4 py-3 text-gray-900 placeholder:text-gray-400 transition-all duration-200 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                         placeholder="Enter category (optional)"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-semibold text-gray-700">Discount (%)</label>
+                    <div className="relative">
+                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                        <svg
+                          className="h-5 w-5 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                      </div>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.01"
+                        value={formData.discount}
+                        onChange={(e) => setFormData({ ...formData, discount: parseFloat(e.target.value) || 0 })}
+                        className="block w-full rounded-xl border border-gray-300 bg-gray-50 pl-10 pr-4 py-3 text-gray-900 placeholder:text-gray-400 transition-all duration-200 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        placeholder="Enter discount percentage"
                       />
                     </div>
                   </div>
@@ -405,7 +472,7 @@ export default function ProductsPage() {
                 </div>
                 <form onSubmit={handleCreateVariant} className="space-y-6">
                   <div>
-                    <label className="mb-2 block text-sm font-semibold text-gray-700">Brand</label>
+                    <label className="mb-2 block text-sm font-semibold text-gray-700">Variant Name</label>
                     <div className="relative">
                       <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                         <svg
@@ -425,40 +492,13 @@ export default function ProductsPage() {
                       <input
                         type="text"
                         required
-                        value={variantData.brand}
-                        onChange={(e) => setVariantData({ ...variantData, brand: e.target.value })}
+                        value={variantData.variant_name}
+                        onChange={(e) => setVariantData({ variant_name: e.target.value })}
                         className="block w-full rounded-xl border border-gray-300 bg-gray-50 pl-10 pr-4 py-3 text-gray-900 placeholder:text-gray-400 transition-all duration-200 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        placeholder="Enter brand name"
+                        placeholder="e.g., Red 500ml, Blue XL, 1 Liter"
                       />
                     </div>
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-semibold text-gray-700">Size</label>
-                    <div className="relative">
-                      <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                        <svg
-                          className="h-5 w-5 text-gray-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"
-                          />
-                        </svg>
-                      </div>
-                      <input
-                        type="text"
-                        required
-                        value={variantData.size}
-                        onChange={(e) => setVariantData({ ...variantData, size: e.target.value })}
-                        className="block w-full rounded-xl border border-gray-300 bg-gray-50 pl-10 pr-4 py-3 text-gray-900 placeholder:text-gray-400 transition-all duration-200 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                        placeholder="Enter size"
-                      />
-                    </div>
+                    <p className="mt-1 text-xs text-gray-500">Enter any variant description (brand, size, color, etc.)</p>
                   </div>
                   <div className="flex justify-end gap-3 pt-4">
                     <button

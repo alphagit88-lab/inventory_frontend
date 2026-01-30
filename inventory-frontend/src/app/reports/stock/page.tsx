@@ -25,7 +25,7 @@ export default function StockStatusPage() {
             // Call the getStockStatus API with filters
             // Note: We might need to ensure the API method supports passing these parameters
             const data = await api.getStockStatus({
-                branchId: user?.role === 'branch_user' ? (user.branchId ?? undefined) : undefined, // specific branch for users, all for store admin
+                locationId: user?.role === 'location_user' ? (user.locationId ?? undefined) : undefined, // specific location for users, all for store admin
                 size: filters.size || undefined,
                 brand: filters.brand || undefined,
                 category: filters.category || undefined,
@@ -129,9 +129,9 @@ export default function StockStatusPage() {
                                                 </td>
                                                 <td className="px-6 py-4 text-sm text-gray-500">
                                                     <ul className="list-disc pl-4 space-y-1">
-                                                        {item.branches.map((b: any, bIdx: number) => (
-                                                            <li key={bIdx}>
-                                                                <span className="font-medium text-gray-900">{b.branchName}:</span> {b.quantity}
+                                                        {item.locations.map((l: any, lIdx: number) => (
+                                                            <li key={lIdx}>
+                                                                <span className="font-medium text-gray-900">{l.locationName}:</span> {l.quantity}
                                                             </li>
                                                         ))}
                                                     </ul>

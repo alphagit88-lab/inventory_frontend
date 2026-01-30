@@ -13,15 +13,18 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Re-fetch inventory when user context changes (tenant or location)
   useEffect(() => {
-    fetchInventory();
-  }, [user]);
+    if (user) {
+      fetchInventory();
+    }
+  }, [user?.tenantId, user?.locationId]);
 
   const fetchInventory = async () => {
     try {
       let data: Inventory[];
-      if (user?.branchId) {
-        data = await api.getInventoryByBranch(user.branchId);
+      if (user?.locationId) {
+        data = await api.getInventoryByLocation(user.locationId);
       } else {
         data = await api.getInventoryByTenant();
       }
@@ -127,13 +130,10 @@ export default function InventoryPage() {
                         Product
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Brand
+                        Variant
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Size
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                        Branch
+                        Location
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         Quantity
@@ -149,7 +149,7 @@ export default function InventoryPage() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {inventory.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500">
+                        <td colSpan={6} className="px-6 py-12 text-center text-sm text-gray-500">
                           No inventory items found. Add stock to get started.
                         </td>
                       </tr>
@@ -166,12 +166,7 @@ export default function InventoryPage() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">
-                              {item.product_variant?.brand || 'N/A'}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              {item.product_variant?.size || 'N/A'}
+                              {item.product_variant?.variant_name || 'N/A'}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -196,19 +191,18 @@ export default function InventoryPage() {
                                 />
                               </svg>
                               <span className="text-sm text-gray-900">
-                                {item.branch?.name || 'N/A'}
+                                {item.location?.name || 'N/A'}
                               </span>
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span
-                              className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${
-                                item.quantity > 10
+                              className={`inline-flex items-center px-3 py-1 text-xs font-semibold rounded-full ${item.quantity > 10
                                   ? 'bg-green-100 text-green-800 ring-1 ring-green-200'
                                   : item.quantity > 0
                                     ? 'bg-yellow-100 text-yellow-800 ring-1 ring-yellow-200'
                                     : 'bg-red-100 text-red-800 ring-1 ring-red-200'
-                              }`}
+                                }`}
                             >
                               {item.quantity}
                             </span>

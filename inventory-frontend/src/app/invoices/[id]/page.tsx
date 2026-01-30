@@ -138,6 +138,25 @@ export default function InvoiceDetailPage() {
                 Created: {invoice.created_at ? formatDate(invoice.created_at, true) : 'N/A'}
               </p>
             </div>
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 print:hidden"
+            >
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                />
+              </svg>
+              Print Invoice
+            </button>
           </div>
 
           {/* Invoice Info Cards */}
@@ -166,9 +185,9 @@ export default function InvoiceDetailPage() {
                   </svg>
                 </div>
                 <div>
-                  <div className="text-xs font-medium text-blue-600 uppercase tracking-wider">Branch</div>
+                  <div className="text-xs font-medium text-blue-600 uppercase tracking-wider">Location</div>
                   <div className="text-lg font-bold text-gray-900 mt-1">
-                    {invoice.branch?.name || 'N/A'}
+                    {invoice.location?.name || 'N/A'}
                   </div>
                 </div>
               </div>
@@ -199,6 +218,34 @@ export default function InvoiceDetailPage() {
                 </div>
               </div>
             </div>
+
+            {invoice.customer_name && (
+              <div className="rounded-2xl bg-gradient-to-br from-indigo-50 to-blue-50 p-6 ring-1 ring-indigo-100">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-indigo-200">
+                    <svg
+                      className="h-5 w-5 text-indigo-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="text-xs font-medium text-indigo-600 uppercase tracking-wider">
+                      Customer Name
+                    </div>
+                    <div className="text-lg font-bold text-gray-900 mt-1">{invoice.customer_name}</div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Items Table */}
@@ -250,14 +297,22 @@ export default function InvoiceDetailPage() {
                           {item.product_variant?.product?.name}
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          {item.product_variant?.brand} - {item.product_variant?.size}
+                          {item.product_variant?.variant_name}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900 font-medium">{item.quantity}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">${Number(item.unit_price).toFixed(2)}</div>
+                        {item.discount && item.discount > 0 ? (
+                          <div className="text-sm">
+                            <div className="line-through text-gray-500">${Number(item.original_price ?? 0).toFixed(2)}</div>
+                            <div className="text-green-600 font-semibold">${Number(item.unit_price).toFixed(2)}</div>
+                            <div className="text-xs text-green-600">({item.discount}% off)</div>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-gray-900">${Number(item.unit_price).toFixed(2)}</div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <div className="text-sm font-semibold text-gray-900">
@@ -282,6 +337,20 @@ export default function InvoiceDetailPage() {
                     {(Number(invoice.total_amount) - Number(invoice.tax_amount)).toFixed(2)}
                   </span>
                 </div>
+                {invoice.items?.some(item => item.discount && item.discount > 0) && (
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-green-600 font-medium">Discount Savings:</span>
+                    <span className="text-green-600 font-semibold">
+                      -$
+                      {invoice.items.reduce((total, item) => {
+                        if (item.discount && item.discount > 0 && item.original_price) {
+                          return total + ((item.original_price - item.unit_price) * item.quantity);
+                        }
+                        return total;
+                      }, 0).toFixed(2)}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between items-center text-sm">
                   <span className="text-gray-600 font-medium">Tax:</span>
                   <span className="text-gray-900 font-semibold">

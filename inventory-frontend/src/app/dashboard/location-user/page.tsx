@@ -25,8 +25,8 @@ export default function BranchUserDashboard() {
 
       try {
         const [inventory, invoices, dailySales] = await Promise.all([
-          api.getInventoryByBranch(user.branchId).catch(() => []),
-          api.getInvoicesByBranch(user.branchId).catch(() => []),
+          api.getInventoryByLocation(user.locationId).catch(() => []),
+          api.getInvoicesByLocation(user.locationId).catch(() => []),
           api.getDailySales(user.branchId).catch(() => ({ totalRevenue: 0 })),
         ]);
         setStats({
@@ -44,12 +44,12 @@ export default function BranchUserDashboard() {
   }, [user]);
 
   return (
-    <ProtectedRoute allowedRoles={['branch_user']}>
+    <ProtectedRoute allowedRoles={['location_user']}>
       <Layout>
         <div className="space-y-8">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-4xl font-bold text-gray-900">Branch User Dashboard</h1>
+            <h1 className="text-4xl font-bold text-gray-900">Location User Dashboard</h1>
             <p className="mt-2 text-base text-gray-600">Manage inventory and create invoices</p>
           </div>
 

@@ -17,24 +17,37 @@ export function Layout({ children }: LayoutProps) {
 
     switch (user.role) {
       case 'super_admin':
+        // Super Admin: Full access to everything
         return [
           { href: '/dashboard/super-admin', label: 'Dashboard' },
           { href: '/tenants', label: 'Shops' },
           { href: '/system', label: 'System Overview' },
-        ];
-      case 'store_admin':
-        return [
-          { href: '/dashboard/store-admin', label: 'Dashboard' },
-          { href: '/branches', label: 'Branches' },
+          { href: '/locations', label: 'Locations' },
           { href: '/products', label: 'Products' },
           { href: '/inventory', label: 'Inventory' },
+          { href: '/inventory/stock-in', label: 'Stock In' },
           { href: '/invoices', label: 'Invoices' },
+          { href: '/invoices/create', label: 'Create Invoice' },
           { href: '/users', label: 'Users' },
           { href: '/reports', label: 'Reports' },
         ];
-      case 'branch_user':
+      case 'store_admin':
+        // Store Admin: Can manage their tenant (no shops or system overview)
         return [
-          { href: '/dashboard/branch-user', label: 'Dashboard' },
+          { href: '/dashboard/store-admin', label: 'Dashboard' },
+          { href: '/locations', label: 'Locations' },
+          { href: '/products', label: 'Products' },
+          { href: '/inventory', label: 'Inventory' },
+          { href: '/inventory/stock-in', label: 'Stock In' },
+          { href: '/invoices', label: 'Invoices' },
+          { href: '/invoices/create', label: 'Create Invoice' },
+          { href: '/users', label: 'Users' },
+          { href: '/reports', label: 'Reports' },
+        ];
+      case 'location_user':
+        // Location User (Cashier): Limited access only
+        return [
+          { href: '/dashboard/location-user', label: 'Dashboard' },
           { href: '/inventory/stock-in', label: 'Stock In' },
           { href: '/invoices/create', label: 'Create Invoice' },
           { href: '/invoices', label: 'Invoices' },
@@ -85,11 +98,10 @@ export function Layout({ children }: LayoutProps) {
                     <Link
                       key={link.href}
                       href={link.href}
-                      className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-200 ${
-                        isActive
-                          ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 shadow-sm'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                      }`}
+                      className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-200 ${isActive
+                        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 shadow-sm'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        }`}
                     >
                       {isActive && (
                         <div className="h-1.5 w-1.5 rounded-full bg-blue-600"></div>
@@ -103,14 +115,31 @@ export function Layout({ children }: LayoutProps) {
             <div className="flex items-center">
               {user && (
                 <div className="flex items-center gap-4">
+                  {/* User Profile Avatar with Context */}
                   <div className="hidden md:flex items-center gap-3 rounded-lg bg-gray-50 px-4 py-2">
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-600 text-white text-xs font-bold shadow-md">
                       {user.email.charAt(0).toUpperCase()}
                     </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs font-semibold text-gray-900">{user.email}</span>
-                      <span className="text-xs text-gray-500 capitalize">{user.role.replace('_', ' ')}</span>
-                    </div>
+                    {/* Super Admin Context - Shop and Location */}
+                    {user.role === 'super_admin' && (user.tenantId || user.locationId) && (
+                      <div className="flex flex-col">
+                        <span className="text-[10px] leading-tight text-gray-500">
+                          {user.tenant?.name && user.tenant.name}
+                          {user.tenant?.name && user.location?.name && " • "}
+                          {user.location?.name && user.location.name}
+                        </span>
+                      </div>
+                    )}
+                    {/* Store Admin & Location User - Show Shop and Location */}
+                    {user.role !== 'super_admin' && (user.tenant?.name || user.location?.name) && (
+                      <div className="flex flex-col">
+                        <span className="text-xs font-semibold text-gray-900">
+                          {user.tenant?.name && user.tenant.name}
+                          {user.tenant?.name && user.location?.name && " • "}
+                          {user.location?.name && user.location.name}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={logout}

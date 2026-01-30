@@ -3,52 +3,59 @@
 import { useEffect, useState } from 'react';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { Layout } from '@/components/Layout';
-import { api, ProductVariant, Branch } from '@/lib/api';
+import { api, ProductVariant, Location } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function StockInPage() {
   const { user } = useAuth();
   const [variants, setVariants] = useState<ProductVariant[]>([]);
-  const [branches, setBranches] = useState<Branch[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [productCode, setProductCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     productVariantId: '',
     quantity: '',
     costPrice: '',
     sellingPrice: '',
-    branchId: '',
+    locationId: '',
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    if (searchTerm.length > 2) {
+    if (searchTerm.length > 2 || productCode.length > 0) {
       searchProducts();
     } else {
       setVariants([]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm]);
+  }, [searchTerm, productCode]);
 
   useEffect(() => {
-    // Store Admin or Super Admin can pick branch; Branch User already scoped
-    const fetchBranches = async () => {
-      if (user?.role === 'store_admin' || user?.role === 'super_admin') {
+    // Store Admin or Super Admin can pick location; Location User already scoped
+    const fetchLocations = async () => {
+      if ((user?.role === 'store_admin' || user?.role === 'super_admin') && user?.tenantId) {
         try {
-          const data = await api.getBranches();
-          setBranches(data);
+          const data = await api.getLocations();
+          setLocations(data);
         } catch (err) {
-          console.error('Failed to load branches', err);
+          console.error('Failed to load locations', err);
         }
       }
     };
-    fetchBranches();
-  }, [user?.role]);
+    fetchLocations();
+  }, [user?.role, user?.tenantId]);
 
   const searchProducts = async () => {
     try {
-      const data = await api.searchProducts(searchTerm);
+      // Combine search term and product code for comprehensive search
+      const combinedSearch = productCode || searchTerm;
+      if (!combinedSearch) {
+        setVariants([]);
+        return;
+      }
+      const data = await api.searchProducts(combinedSearch);
       setVariants(data);
     } catch (error) {
       if (error instanceof Error) {
@@ -91,14 +98,14 @@ export default function StockInPage() {
         return;
       }
 
-      // Determine branch ID
-      const branchIdToUse =
-        user?.role === 'branch_user'
-          ? user?.branchId
-          : formData.branchId || user?.branchId;
+      // Determine location ID
+      const locationIdToUse =
+        user?.role === 'location_user'
+          ? user?.locationId
+          : formData.locationId || user?.locationId;
 
-      if (!branchIdToUse) {
-        setError('Branch is required. Please select a branch.');
+      if (!locationIdToUse) {
+        setError('Location is required. Please select a location.');
         setLoading(false);
         return;
       }
@@ -109,7 +116,7 @@ export default function StockInPage() {
         quantity: parseInt(formData.quantity),
         costPrice: parseFloat(formData.costPrice),
         sellingPrice: parseFloat(formData.sellingPrice),
-        branchId: branchIdToUse,
+        locationId: locationIdToUse,
       });
 
       setSuccess('Stock added successfully!');
@@ -118,9 +125,10 @@ export default function StockInPage() {
         quantity: '',
         costPrice: '',
         sellingPrice: '',
-        branchId: '',
+        locationId: '',
       });
       setSearchTerm('');
+      setProductCode('');
       setVariants([]);
     } catch (error) {
       console.error('Stock in error:', error);
@@ -187,61 +195,111 @@ export default function StockInPage() {
           {/* Form Card */}
           <div className="rounded-2xl bg-white p-8 shadow-lg ring-1 ring-gray-200/50">
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Product Search */}
-              <div>
-                <label className="mb-2 block text-sm font-semibold text-gray-700">
-                  Search Product (Name, Brand, or Size)
-                </label>
-                <div className="relative">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <svg
-                      className="h-5 w-5 text-gray-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                      />
-                    </svg>
-                  </div>
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Type to search products..."
-                    className="block w-full rounded-xl border border-gray-300 bg-gray-50 pl-10 pr-4 py-3 text-gray-900 placeholder:text-gray-400 transition-all duration-200 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                </div>
-                {variants.length > 0 && (
-                  <div className="mt-3 max-h-60 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg ring-1 ring-gray-200/50">
-                    {variants.map((variant) => (
-                      <button
-                        key={variant.id}
-                        type="button"
-                        onClick={() => {
-                          setFormData({ ...formData, productVariantId: variant.id });
-                          setSearchTerm(
-                            `${variant.product?.name || ''} - ${variant.brand} - ${variant.size}`
-                          );
-                          setVariants([]);
-                        }}
-                        className="w-full px-4 py-3 text-left transition-colors duration-150 hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
+              {/* Product Search - Name and Code Fields */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Product Name Search */}
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    Search Product
+                  </label>
+                  <div className="relative">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <svg
+                        className="h-5 w-5 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                       >
-                        <div className="font-semibold text-gray-900">
-                          {variant.product?.name} - {variant.brand} - {variant.size}
-                        </div>
-                        {variant.product?.category && (
-                          <div className="text-sm text-gray-500 mt-1">{variant.product.category}</div>
-                        )}
-                      </button>
-                    ))}
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => {
+                        setSearchTerm(e.target.value);
+                        setProductCode(''); // Clear code when searching by name
+                      }}
+                      placeholder="Search by product name..."
+                      className="block w-full rounded-xl border border-gray-300 bg-gray-50 pl-10 pr-4 py-3 text-gray-900 placeholder:text-gray-400 transition-all duration-200 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
                   </div>
-                )}
+                </div>
+
+                {/* Product Code Search */}
+                <div>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">
+                    Product Code
+                  </label>
+                  <div className="relative">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <svg
+                        className="h-5 w-5 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"
+                        />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={productCode}
+                      onChange={(e) => {
+                        setProductCode(e.target.value);
+                        setSearchTerm(''); // Clear name when searching by code
+                      }}
+                      placeholder="Enter product code..."
+                      className="block w-full rounded-xl border border-gray-300 bg-gray-50 pl-10 pr-4 py-3 text-gray-900 placeholder:text-gray-400 transition-all duration-200 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+                </div>
               </div>
+
+              {/* Search Results Dropdown */}
+              {variants.length > 0 && (
+                <div className="mt-3 max-h-60 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-lg ring-1 ring-gray-200/50">
+                  {variants.map((variant) => (
+                    <button
+                      key={variant.id}
+                      type="button"
+                      onClick={() => {
+                        setFormData({ ...formData, productVariantId: variant.id });
+                        setSearchTerm(
+                          `${variant.product?.name || ''} - ${variant.variant_name}`
+                        );
+                        setProductCode(variant.product?.product_code || '');
+                        setVariants([]);
+                      }}
+                      className="w-full px-4 py-3 text-left transition-colors duration-150 hover:bg-blue-50 border-b border-gray-100 last:border-b-0"
+                    >
+                      <div className="font-semibold text-gray-900">
+                        {variant.product?.name} - {variant.variant_name}
+                      </div>
+                      <div className="flex gap-3 mt-1 text-sm text-gray-500">
+                        {variant.product?.product_code && (
+                          <span className="font-mono bg-gray-100 px-2 py-0.5 rounded">
+                            Code: {variant.product.product_code}
+                          </span>
+                        )}
+                        {variant.product?.category && (
+                          <span>{variant.product.category}</span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Quantity */}
               <div>
@@ -274,10 +332,10 @@ export default function StockInPage() {
                 </div>
               </div>
 
-              {/* Branch Selection (for Store Admin/Super Admin) */}
+              {/* Location Selection (for Store Admin/Super Admin) */}
               {(user?.role === 'store_admin' || user?.role === 'super_admin') && (
                 <div>
-                  <label className="mb-2 block text-sm font-semibold text-gray-700">Branch *</label>
+                  <label className="mb-2 block text-sm font-semibold text-gray-700">Location *</label>
                   <div className="relative">
                     <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                       <svg
@@ -302,14 +360,14 @@ export default function StockInPage() {
                     </div>
                     <select
                       required
-                      value={formData.branchId}
-                      onChange={(e) => setFormData({ ...formData, branchId: e.target.value })}
+                      value={formData.locationId}
+                      onChange={(e) => setFormData({ ...formData, locationId: e.target.value })}
                       className="block w-full appearance-none rounded-xl border border-gray-300 bg-gray-50 pl-10 pr-10 py-3 text-gray-900 transition-all duration-200 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                     >
-                      <option value="">Select a branch</option>
-                      {branches.map((branch) => (
-                        <option key={branch.id} value={branch.id}>
-                          {branch.name}
+                      <option value="">Select a location</option>
+                      {locations.map((location) => (
+                        <option key={location.id} value={location.id}>
+                          {location.name}
                         </option>
                       ))}
                     </select>

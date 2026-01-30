@@ -37,7 +37,7 @@ export default function ReportsPage() {
       const today = new Date();
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(today.getDate() - 30);
-      
+
       setDateRange({
         startDate: thirtyDaysAgo.toISOString().split('T')[0],
         endDate: today.toISOString().split('T')[0],
@@ -48,11 +48,11 @@ export default function ReportsPage() {
   }, [mounted]);
 
   const fetchProfit = async () => {
-    if (!user?.branchId) return;
+    if (!user?.locationId) return;
     setLoading(true);
     try {
       const data = await api.calculateProfit(
-        user.branchId,
+        user.locationId,
         dateRange.startDate,
         dateRange.endDate
       );
@@ -65,10 +65,10 @@ export default function ReportsPage() {
   };
 
   const fetchDailySales = async () => {
-    if (!user?.branchId) return;
+    if (!user?.locationId) return;
     setLoading(true);
     try {
-      const data = await api.getDailySales(user.branchId, dateRange.selectedDate);
+      const data = await api.getDailySales(user.locationId, dateRange.selectedDate);
       setDailySales(data);
     } catch (error) {
       console.error('Failed to fetch daily sales:', error);
@@ -78,10 +78,10 @@ export default function ReportsPage() {
   };
 
   const fetchStockReport = async () => {
-    if (!user?.branchId) return;
+    if (!user?.locationId) return;
     setLoading(true);
     try {
-      const data = await api.getLocalStockReport(user.branchId);
+      const data = await api.getLocalStockReport(user.locationId);
       setStockReport(data);
     } catch (error) {
       console.error('Failed to fetch stock report:', error);
@@ -90,13 +90,14 @@ export default function ReportsPage() {
     }
   };
 
+  // Re-fetch reports when location context changes
   useEffect(() => {
-    if (user?.branchId && mounted && dateRange.startDate && dateRange.endDate && dateRange.selectedDate) {
+    if (user?.locationId && mounted && dateRange.startDate && dateRange.endDate && dateRange.selectedDate) {
       fetchProfit();
       fetchDailySales();
       fetchStockReport();
     }
-  }, [user, dateRange.startDate, dateRange.endDate, dateRange.selectedDate, mounted]);
+  }, [user?.locationId, dateRange.startDate, dateRange.endDate, dateRange.selectedDate, mounted]);
 
   return (
     <ProtectedRoute>
