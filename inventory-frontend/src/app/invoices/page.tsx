@@ -92,7 +92,7 @@ export default function InvoicesPage() {
               <h1 className="text-3xl font-bold text-gray-900">Invoices</h1>
               <p className="mt-2 text-sm text-gray-600">View all invoices</p>
             </div>
-            {user?.role === 'location_user' && (
+            {['super_admin', 'store_admin', 'location_user'].includes(user?.role || '') && (
               <Link
                 href="/invoices/create"
                 className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"

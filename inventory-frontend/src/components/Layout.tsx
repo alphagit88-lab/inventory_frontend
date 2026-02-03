@@ -27,7 +27,6 @@ export function Layout({ children }: LayoutProps) {
           { href: '/inventory', label: 'Inventory' },
           { href: '/inventory/stock-in', label: 'Stock In' },
           { href: '/invoices', label: 'Invoices' },
-          { href: '/invoices/create', label: 'Create Invoice' },
           { href: '/users', label: 'Users' },
           { href: '/reports', label: 'Reports' },
         ];
@@ -40,7 +39,6 @@ export function Layout({ children }: LayoutProps) {
           { href: '/inventory', label: 'Inventory' },
           { href: '/inventory/stock-in', label: 'Stock In' },
           { href: '/invoices', label: 'Invoices' },
-          { href: '/invoices/create', label: 'Create Invoice' },
           { href: '/users', label: 'Users' },
           { href: '/reports', label: 'Reports' },
         ];
@@ -49,7 +47,6 @@ export function Layout({ children }: LayoutProps) {
         return [
           { href: '/dashboard/location-user', label: 'Dashboard' },
           { href: '/inventory/stock-in', label: 'Stock In' },
-          { href: '/invoices/create', label: 'Create Invoice' },
           { href: '/invoices', label: 'Invoices' },
           { href: '/reports', label: 'Reports' },
         ];
@@ -94,20 +91,25 @@ export function Layout({ children }: LayoutProps) {
               <div className="hidden sm:ml-8 sm:flex sm:space-x-1">
                 {navLinks.map((link) => {
                   const isActive = pathname === link.href;
+                  const showSeparator = link.label === 'Shops' || link.label === 'Locations';
+
                   return (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-200 ${isActive
-                        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 shadow-sm'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                        }`}
-                    >
-                      {isActive && (
-                        <div className="h-1.5 w-1.5 rounded-full bg-blue-600"></div>
-                      )}
-                      {link.label}
-                    </Link>
+                    <div key={link.href} className="flex items-center">
+                      {showSeparator && <span className="text-gray-300 mx-1"></span>}
+                      <Link
+                        href={link.href}
+                        className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-200 ${isActive
+                          ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 shadow-sm'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                          }`}
+                      >
+                        {isActive && (
+                          <div className="h-1.5 w-1.5 rounded-full bg-blue-600"></div>
+                        )}
+                        {link.label}
+                      </Link>
+                      {showSeparator && <span className="text-gray-300 mx-1"></span>}
+                    </div>
                   );
                 })}
               </div>
@@ -120,46 +122,41 @@ export function Layout({ children }: LayoutProps) {
                     <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-600 text-white text-xs font-bold shadow-md">
                       {user.email.charAt(0).toUpperCase()}
                     </div>
-                    {/* Super Admin Context - Shop and Location */}
-                    {user.role === 'super_admin' && (user.tenantId || user.locationId) && (
-                      <div className="flex flex-col">
-                        <span className="text-[10px] leading-tight text-gray-500">
-                          {user.tenant?.name && user.tenant.name}
-                          {user.tenant?.name && user.location?.name && " • "}
-                          {user.location?.name && user.location.name}
-                        </span>
+                    {/* User Context - Shop and Location */}
+                    {(user.tenant?.name || user.location?.name) && (
+                      <div className="flex flex-col items-start min-w-[100px]">
+                        {user.tenant?.name && (
+                          <span className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">
+                            {user.tenant.name}
+                          </span>
+                        )}
+                        {user.location?.name && (
+                          <span className="text-sm font-bold text-gray-800 leading-tight">
+                            {user.location.name}
+                          </span>
+                        )}
                       </div>
                     )}
-                    {/* Store Admin & Location User - Show Shop and Location */}
-                    {user.role !== 'super_admin' && (user.tenant?.name || user.location?.name) && (
-                      <div className="flex flex-col">
-                        <span className="text-xs font-semibold text-gray-900">
-                          {user.tenant?.name && user.tenant.name}
-                          {user.tenant?.name && user.location?.name && " • "}
-                          {user.location?.name && user.location.name}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={logout}
-                    className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-red-600 to-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-red-500/25 transition-all duration-200 hover:from-red-700 hover:to-rose-700 hover:shadow-xl hover:shadow-red-500/30"
-                  >
-                    <svg
-                      className="h-4 w-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                    <button
+                      onClick={logout}
+                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-red-600 to-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-red-500/25 transition-all duration-200 hover:from-red-700 hover:to-rose-700 hover:shadow-xl hover:shadow-red-500/30"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                      />
-                    </svg>
-                    Logout
-                  </button>
+                      <svg
+                        className="h-4 w-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                        />
+                      </svg>
+                      Logout
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
